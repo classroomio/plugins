@@ -1,0 +1,18 @@
+{
+  "name": "@classroomio/official-plugin-linkedin-sharing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ClassroomIO's official LinkedIn certificate sharing plugin",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "check": "node --check ./scripts/build.mjs && node --check ./tests/build.test.mjs",
+    "test": "node --test ./tests/build.test.mjs",
+    "pack": "cio-plugin build",
+    "seed": "cio-plugin dev"
+  },
+  "files": [
+    "plugin.json",
+    "dist",
+    "README.md"
+  ]
+}

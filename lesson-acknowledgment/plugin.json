@@ -1,0 +1,66 @@
+{
+  "$schema": "https://classroomio.com/schemas/plugin.v1.json",
+  "manifestVersion": 1,
+  "id": "com.classroomio.lesson-acknowledgment",
+  "name": "Lesson Policy Acknowledgment",
+  "version": "1.1.0",
+  "description": "Lets learners acknowledge lesson policies and synchronizes that action with lesson completion.",
+  "publisher": "classroomio",
+  "icon": { "resource": "assets/icon.svg" },
+  "license": "MIT",
+  "engines": {
+    "classroomio": ">=2.0.0",
+    "pluginApi": "2026-10-08"
+  },
+  "runtime": {
+    "ui": {
+      "entrypoints": {
+        "acknowledgment": {
+          "renderMode": "custom",
+          "resource": "dist/index.html"
+        }
+      }
+    }
+  },
+  "permissions": {
+    "required": [
+      "learner.progress:read",
+      "learner.progress:write",
+      "plugin.storage:read",
+      "plugin.storage:write"
+    ]
+  },
+  "storage": {
+    "documents": [
+      {
+        "namespace": "lesson-acknowledgment",
+        "scope": "user",
+        "schemaVersion": 1,
+        "schema": {
+          "type": "object",
+          "required": ["acknowledged", "timestamp"],
+          "properties": {
+            "acknowledged": { "type": "boolean" },
+            "timestamp": { "type": ["string", "null"] }
+          }
+        }
+      }
+    ]
+  },
+  "contributes": {
+    "slots": [
+      {
+        "id": "lesson-acknowledgment",
+        "target": "lesson.after",
+        "renderMode": "custom",
+        "entrypoint": "acknowledgment",
+        "title": "Lesson policy acknowledgment"
+      }
+    ]
+  },
+  "dataPolicy": {
+    "storesCustomerData": true,
+    "retentionAfterUninstallDays": 30,
+    "privacyPolicyUrl": "https://classroomio.com/privacy"
+  }
+}

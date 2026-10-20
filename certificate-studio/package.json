@@ -1,0 +1,29 @@
+{
+  "name": "@classroomio/official-plugin-certificate-studio",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "pack": "cio-plugin build",
+    "seed": "cio-plugin dev"
+  },
+  "dependencies": {
+    "@classroomio/certificate-kit": "link:../../classroomio/packages/certificate-kit",
+    "@classroomio/plugin-design": "link:../../classroomio/packages/plugin-design",
+    "@classroomio/plugin-sdk": "link:../../classroomio/packages/plugin-sdk",
+    "@lucide/svelte": "^1.16.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@types/node": "^20.19.0",
+    "svelte": "^5.46.1",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.5.2",
+    "vite": "^5.4.4",
+    "vitest": "^2.1.8"
+  }
+}

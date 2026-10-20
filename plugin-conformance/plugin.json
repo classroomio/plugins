@@ -1,0 +1,29 @@
+{
+  "$schema": "https://classroomio.com/schemas/plugin-manifest.v1.json",
+  "manifestVersion": 1,
+  "id": "com.classroomio.conformance",
+  "name": "Plugin API Conformance",
+  "version": "1.0.0",
+  "description": "A non-production plugin used to exercise the public Plugin API contract.",
+  "publisher": "ClassroomIO",
+  "license": "Apache-2.0",
+  "engines": {
+    "classroomio": ">=1.0.0",
+    "pluginApi": "1.0.0"
+  },
+  "permissions": {
+    "required": [
+      "identity.profile:read",
+      "organization.profile:read",
+      "course.metadata:read",
+      "course.content:read",
+      "lesson.metadata:read",
+      "lesson.content:read",
+      "exercise.metadata:read",
+      "course.enrollment:read",
+      "certificate.issued:read"
+    ],
+    "optional": []
+  },
+  "contributes": {}
+}

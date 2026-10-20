@@ -1,0 +1,25 @@
+name: Contributor License Agreement
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: none
+  pull-requests: read
+
+jobs:
+  cla:
+    if: github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require maintainer-verified CLA label for external contributors
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          script: |
+            const trusted = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+            if (trusted.has(context.payload.pull_request.author_association)) return;
+            const labels = context.payload.pull_request.labels.map((label) => label.name);
+            if (!labels.includes('cla: signed')) {
+              core.setFailed('A maintainer must verify the ClassroomIO CLA and add the "cla: signed" label.');
+            }

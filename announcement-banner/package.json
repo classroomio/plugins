@@ -1,0 +1,24 @@
+{
+  "name": "@classroomio/official-plugin-announcement-banner",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "pack": "cio-plugin build",
+    "seed": "cio-plugin dev"
+  },
+  "dependencies": {
+    "@classroomio/plugin-design": "link:../../classroomio/packages/plugin-design",
+    "@classroomio/plugin-sdk": "link:../../classroomio/packages/plugin-sdk"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "svelte": "^5.46.1",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.5.2",
+    "vite": "^5.4.4"
+  }
+}

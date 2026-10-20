@@ -1,0 +1,53 @@
+name: Plugin pull request
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: classroomio/classroomio
+          ref: 70916e365baab864e103c850ceb2a7d38c8821c4
+          path: core
+      - name: Link pinned ClassroomIO boundary packages
+        run: ln -s "$GITHUB_WORKSPACE/core" "$GITHUB_WORKSPACE/../classroomio"
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 10.19.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Build pinned boundary packages
+        working-directory: core
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @classroomio/plugin-sdk build
+          pnpm --filter @classroomio/plugin-design build
+          pnpm --filter @classroomio/certificate-kit build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm run pack
+      - run: pnpm release:verify
+      - name: Save first-build digests
+        run: node -e "const i=require('./.plugin-artifacts/release-index.json'); console.log(JSON.stringify(i.releases.map(({pluginId,version,artifactDigest})=>({pluginId,version,artifactDigest}))))" > /tmp/plugin-digests.json
+      - name: Rebuild and prove determinism
+        run: |
+          rm -rf .plugin-artifacts
+          pnpm run pack
+          pnpm release:verify
+          node -e "const fs=require('fs'); const i=require('./.plugin-artifacts/release-index.json'); const actual=JSON.stringify(i.releases.map(({pluginId,version,artifactDigest})=>({pluginId,version,artifactDigest}))); const expected=fs.readFileSync('/tmp/plugin-digests.json','utf8').trim(); if(actual!==expected) process.exit(1)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: plugin-review-artifacts
+          path: .plugin-artifacts/
+          if-no-files-found: error
+          retention-days: 7

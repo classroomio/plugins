@@ -1,0 +1,8 @@
+packages:
+  - "announcement-banner"
+  - "certificate-studio"
+  - "lesson-acknowledgment"
+  - "linkedin-sharing"
+  - "reading-time"
+allowBuilds:
+  esbuild: true
