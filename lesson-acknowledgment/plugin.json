@@ -22,31 +22,6 @@
       }
     }
   },
-  "permissions": {
-    "required": [
-      "learner.progress:read",
-      "learner.progress:write",
-      "plugin.storage:read",
-      "plugin.storage:write"
-    ]
-  },
-  "storage": {
-    "documents": [
-      {
-        "namespace": "lesson-acknowledgment",
-        "scope": "user",
-        "schemaVersion": 1,
-        "schema": {
-          "type": "object",
-          "required": ["acknowledged", "timestamp"],
-          "properties": {
-            "acknowledged": { "type": "boolean" },
-            "timestamp": { "type": ["string", "null"] }
-          }
-        }
-      }
-    ]
-  },
   "contributes": {
     "slots": [
       {

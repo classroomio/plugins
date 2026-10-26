@@ -27,9 +27,17 @@
     } catch {}
 
     try {
-      profile = await client.organization.getProfile();
+      const ctx = await client.context.get();
+      if (ctx?.organization) {
+        profile = {
+          id: ctx.organization.id,
+          name: ctx.organization.name,
+          slug: "",
+          avatarUrl: ctx.organization.avatarUrl ?? null
+        };
+      }
     } catch (err: unknown) {
-      console.warn('Could not fetch org profile from bridge:', err);
+      console.warn('Could not fetch org profile from bridge context:', err);
     }
   });
 

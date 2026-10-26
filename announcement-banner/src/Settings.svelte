@@ -31,7 +31,7 @@
     const nextConfig = { ...config, revision: config.revision + 1 };
 
     try {
-      await client.storage.set('config', nextConfig, 'announcement', 'owner');
+      await client.preferences.set('config', nextConfig, 'announcement');
       config = nextConfig;
       saved = true;
       await client.ui.toast({ message: 'Announcement settings saved', variant: 'success' });
@@ -55,7 +55,7 @@
 
     async function initialize() {
       try {
-        const stored = await client.storage.get<AnnouncementConfig>('config', 'announcement', 'owner');
+        const stored = await client.preferences.get<AnnouncementConfig>('config', 'announcement');
         if (!disposed) config = normalizeConfig(stored);
       } catch (error) {
         if (!disposed) {

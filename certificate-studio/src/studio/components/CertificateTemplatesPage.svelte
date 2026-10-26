@@ -13,7 +13,7 @@
     STARTER_TEMPLATES,
     type StarterTemplateMeta,
     type CertificatePreviewData,
-  } from "@classroomio/certificate-kit";
+  } from "../../kit";
   import type { ClassroomIOClient } from "@classroomio/plugin-sdk";
   import type { OrganizationProfile, StudioTemplate } from "../../shared/types";
   import { StudioApiClient } from "../../shared/api";

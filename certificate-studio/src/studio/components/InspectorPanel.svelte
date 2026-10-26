@@ -3,7 +3,7 @@
     PALETTE_SWATCHES,
     FONT_OPTIONS,
     type CertificateDesignV1,
-  } from "@classroomio/certificate-kit";
+  } from "../../kit";
   import Layout from "@lucide/svelte/icons/layout";
   import Square from "@lucide/svelte/icons/square";
   import Type from "@lucide/svelte/icons/type";

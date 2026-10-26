@@ -5,19 +5,19 @@
       "id": "com.classroomio.announcement-banner",
       "path": "announcement-banner",
       "kind": "first-party",
-      "release": false
+      "release": true
     },
     {
       "id": "com.classroomio.certificate-studio",
       "path": "certificate-studio",
       "kind": "first-party",
-      "release": false
+      "release": true
     },
     {
       "id": "com.classroomio.lesson-acknowledgment",
       "path": "lesson-acknowledgment",
       "kind": "first-party",
-      "release": false
+      "release": true
     },
     {
       "id": "com.classroomio.linkedin-sharing",
@@ -29,7 +29,7 @@
       "id": "com.classroomio.reading-time",
       "path": "reading-time",
       "kind": "first-party",
-      "release": false
+      "release": true
     },
     {
       "id": "com.classroomio.conformance",

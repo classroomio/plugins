@@ -2,7 +2,7 @@ import type {
   CertificateDesignV1,
   CertificateTemplateId,
   StarterTemplateMeta,
-} from "@classroomio/certificate-kit";
+} from "../kit";
 
 export type ToolCategory =
   | "layout"

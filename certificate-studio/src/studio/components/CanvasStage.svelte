@@ -16,7 +16,7 @@
     renderCertificatePreviewDocument,
     type CertificatePreviewData,
     type CertificateDesignV1,
-  } from "@classroomio/certificate-kit";
+  } from "../../kit";
   import type { ToolCategory, StudioElementId } from "../../shared/types";
   import CanvasElementZone from "./CanvasElementZone.svelte";
 

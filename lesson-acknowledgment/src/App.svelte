@@ -43,11 +43,11 @@
     const timestamp = new Date().toISOString();
 
     try {
-      await client.lessons.setCompletion(true);
       const acknowledgment: AcknowledgmentRecord = { acknowledged: true, timestamp };
-      await client.storage.set(storageKey, acknowledgment, storageNamespace, 'user');
+      await client.preferences.set(storageKey, acknowledgment, storageNamespace);
       isAcknowledged = true;
       acknowledgedAt = timestamp;
+      await client.ui.toast({ message: 'Lesson policy acknowledged', variant: 'success' });
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'The acknowledgment could not be saved.';
     } finally {
@@ -63,8 +63,7 @@
     errorMessage = '';
 
     try {
-      await client.lessons.setCompletion(false);
-      await client.storage.delete(storageKey, storageNamespace, 'user');
+      await client.preferences.delete(storageKey, storageNamespace);
       isAcknowledged = false;
       acknowledgedAt = null;
     } catch (error) {
@@ -85,13 +84,10 @@
         if (!lessonId) throw new Error('Lesson context is unavailable.');
 
         storageKey = `lesson-${lessonId}`;
-        const [completion, acknowledgment] = await Promise.all([
-          client.lessons.getCompletion(),
-          client.storage.get<AcknowledgmentRecord>(storageKey, storageNamespace, 'user')
-        ]);
+        const acknowledgment = await client.preferences.get<AcknowledgmentRecord>(storageKey, storageNamespace);
         if (disposed) return;
 
-        isAcknowledged = completion.isComplete || Boolean(acknowledgment?.acknowledged);
+        isAcknowledged = Boolean(acknowledgment?.acknowledged);
         acknowledgedAt = acknowledgment?.timestamp ?? null;
       } catch (error) {
         if (disposed) return;

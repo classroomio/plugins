@@ -1,10 +1,15 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { createClassroomIOClient, type LessonReadingMetrics } from '@classroomio/plugin-sdk';
+  import { createClassroomIOClient } from '@classroomio/plugin-sdk';
+
+  interface ReadingMetrics {
+    wordCount: number;
+    estimatedMinutes: number;
+  }
 
   const client = createClassroomIOClient();
 
-  let metrics = $state<LessonReadingMetrics | null>(null);
+  let metrics = $state<ReadingMetrics | null>(null);
   let errorMessage = $state('');
   let resizeObserver: ResizeObserver | null = null;
 
@@ -17,10 +22,14 @@
 
     async function initialize() {
       try {
-        const result = await client.lessons.getReadingMetrics();
+        const context = await client.context.get();
         if (disposed) return;
 
-        metrics = result;
+        const resource = context.surface?.resource;
+        const wordCount = resource?.wordCount ?? 0;
+        const estimatedMinutes = resource?.estimatedMinutes ?? Math.max(1, Math.ceil(wordCount / 200));
+
+        metrics = { wordCount, estimatedMinutes };
       } catch (error) {
         if (disposed) return;
 

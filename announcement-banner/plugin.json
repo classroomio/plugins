@@ -20,41 +20,6 @@
       }
     }
   },
-  "permissions": {
-    "required": [
-      "course.metadata:read",
-      "plugin.storage:read",
-      "plugin.storage:write"
-    ]
-  },
-  "storage": {
-    "documents": [
-      {
-        "namespace": "announcement",
-        "scope": "organization",
-        "schemaVersion": 1,
-        "schema": {
-          "type": "object",
-          "required": ["mode", "message", "linkText", "linkUrl", "backgroundColor", "dismissible", "revision"],
-          "properties": {
-            "mode": { "enum": ["dynamic", "custom"] },
-            "message": { "type": "string", "maxLength": 500 },
-            "linkText": { "type": "string", "maxLength": 100 },
-            "linkUrl": { "type": "string", "maxLength": 2048 },
-            "backgroundColor": { "type": "string", "maxLength": 32 },
-            "dismissible": { "type": "boolean" },
-            "revision": { "type": "integer", "minimum": 1 }
-          }
-        }
-      },
-      {
-        "namespace": "announcement",
-        "scope": "user",
-        "schemaVersion": 1,
-        "schema": { "type": "boolean" }
-      }
-    ]
-  },
   "contributes": {
     "navigation": [
       {

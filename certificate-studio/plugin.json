@@ -1,5 +1,5 @@
 {
-  "$schema": "https://classroomio.com/schemas/plugin-manifest.v1.json",
+  "$schema": "https://classroomio.com/schemas/plugin.v1.json",
   "manifestVersion": 1,
   "id": "com.classroomio.certificate-studio",
   "name": "Certificate Studio",
@@ -9,8 +9,8 @@
   "icon": { "resource": "assets/icon.svg" },
   "license": "Apache-2.0",
   "engines": {
-    "classroomio": ">=1.0.0",
-    "pluginApi": "1.0.0"
+    "classroomio": ">=2.0.0",
+    "pluginApi": "2026-10-08"
   },
   "runtime": {
     "ui": {
@@ -25,40 +25,6 @@
         }
       }
     }
-  },
-  "permissions": {
-    "required": [
-      "organization.profile:read",
-      "certificate.template:read",
-      "certificate.template:write",
-      "plugin.storage:read",
-      "plugin.storage:write"
-    ],
-    "optional": []
-  },
-  "storage": {
-    "documents": [
-      {
-        "namespace": "certificate-templates",
-        "scope": "organization",
-        "schemaVersion": 1,
-        "schema": {
-          "type": "object",
-          "required": ["id", "name", "designVersion", "design", "revision", "isActive", "createdAt", "updatedAt"],
-          "properties": {
-            "id": { "type": "string" },
-            "name": { "type": "string", "maxLength": 128 },
-            "description": { "type": ["string", "null"], "maxLength": 500 },
-            "designVersion": { "type": "integer", "minimum": 1 },
-            "design": { "type": "object" },
-            "revision": { "type": "integer", "minimum": 1 },
-            "isActive": { "type": "boolean" },
-            "createdAt": { "type": "string" },
-            "updatedAt": { "type": "string" }
-          }
-        }
-      }
-    ]
   },
   "contributes": {
     "navigation": [

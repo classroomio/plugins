@@ -2,74 +2,36 @@ import { describe, it, expect, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { StudioApiClient } from '../src/shared/api';
-import type { PluginClient } from '@classroomio/plugin-sdk';
-import { DEFAULT_CERTIFICATE_DESIGN_V1 } from '@classroomio/certificate-kit';
+import type { ClassroomIOClient } from '@classroomio/plugin-sdk';
+import { DEFAULT_CERTIFICATE_DESIGN_V1 } from '../src/kit';
 
 describe('Certificate Studio UI & Client Tests', () => {
-  it('StudioApiClient loads templates via host storage', async () => {
+  it('StudioApiClient loads templates via host preferences', async () => {
     const mockClient = {
-      storage: {
-        list: vi.fn().mockResolvedValue([
-          {
-            key: 'tmpl-1',
-            value: {
-              id: 'tmpl-1',
-              name: 'Test Template',
-              designVersion: 1,
-              design: DEFAULT_CERTIFICATE_DESIGN_V1,
-              revision: 1,
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }
+      preferences: {
+        get: vi.fn().mockResolvedValue({
+          'tmpl-1': {
+            id: 'tmpl-1',
+            name: 'Test Template',
+            designVersion: 1,
+            design: DEFAULT_CERTIFICATE_DESIGN_V1,
+            revision: 1,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           }
-        ]),
-        get: vi.fn(),
+        }),
         set: vi.fn(),
         delete: vi.fn()
       }
-    } as any;
-
-    const mockFetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.endsWith('/v1/session/exchange')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({ token: 'mock-bearer-token-abc' })
-        });
-      }
-
-      if (url.endsWith('/v1/templates')) {
-        const authHeader =
-          (init?.headers as Record<string, string>)?.['Authorization'] ||
-          (init?.headers as Headers)?.get?.('Authorization');
-        if (!authHeader?.includes('mock-bearer-token-abc')) {
-          return Promise.resolve({ ok: false, status: 401, json: async () => ({ error: 'Unauthorized' }) });
-        }
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            templates: [
-              {
-                id: 'tmpl-1',
-                name: 'Test Template',
-                design: DEFAULT_CERTIFICATE_DESIGN_V1
-              }
-            ]
-          })
-        });
-      }
-
-      return Promise.resolve({ ok: false, status: 404, json: async () => ({ error: 'Not found' }) });
-    });
+    } as unknown as ClassroomIOClient;
 
     const api = new StudioApiClient(mockClient);
     const templates = await api.listTemplates();
 
     expect(templates.length).toBe(1);
     expect(templates[0].id).toBe('tmpl-1');
-    expect(mockClient.storage.list).toHaveBeenCalledWith('certificate-templates', 'organization');
+    expect(mockClient.preferences.get).toHaveBeenCalledWith('templates_catalog', 'certificate-templates');
   });
 
   it('Verifies zero private ClassroomIO imports in plugin source', () => {

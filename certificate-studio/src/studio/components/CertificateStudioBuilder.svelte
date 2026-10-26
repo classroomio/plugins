@@ -9,7 +9,7 @@
     renderCertificatePreviewDocument,
     type CertificateDesignV1,
     type CertificatePreviewData,
-  } from "@classroomio/certificate-kit";
+  } from "../../kit";
   import type { ClassroomIOClient } from "@classroomio/plugin-sdk";
   import type {
     ToolCategory,

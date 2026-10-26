@@ -5,7 +5,7 @@
     normalizeCertificateDesign,
     type CertificateDesignV1,
     type CertificatePreviewData,
-  } from "@classroomio/certificate-kit";
+  } from "../../kit";
 
   interface Props {
     design: CertificateDesignV1;

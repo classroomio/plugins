@@ -4,7 +4,7 @@
   import Loader2 from '@lucide/svelte/icons/loader-2';
   import Check from '@lucide/svelte/icons/check';
   import Award from '@lucide/svelte/icons/award';
-  import { renderCertificatePreview } from '@classroomio/certificate-kit';
+  import { renderCertificatePreview } from "../kit";
   import { StudioApiClient } from '../shared/api';
   import type { StudioTemplate } from '../shared/types';
 
