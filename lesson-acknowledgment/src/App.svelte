@@ -3,19 +3,17 @@
   import { createClassroomIOClient } from '@classroomio/plugin-sdk';
 
   interface AcknowledgmentRecord {
-    acknowledged: boolean;
-    timestamp: string | null;
+    acknowledgedAt: string;
   }
 
   const client = createClassroomIOClient();
   const storageNamespace = 'lesson-acknowledgment';
-
   let isAcknowledged = $state(false);
   let acknowledgedAt = $state<string | null>(null);
   let isLoading = $state(true);
   let isSubmitting = $state(false);
   let errorMessage = $state('');
-  let storageKey = '';
+  let lessonId = '';
   let resizeObserver: ResizeObserver | null = null;
 
   const formattedTimestamp = $derived.by(() => {
@@ -36,38 +34,18 @@
   }
 
   async function acknowledge() {
-    if (isSubmitting || !storageKey) return;
+    if (isSubmitting || !lessonId) return;
 
     isSubmitting = true;
     errorMessage = '';
-    const timestamp = new Date().toISOString();
-
     try {
-      const acknowledgment: AcknowledgmentRecord = { acknowledged: true, timestamp };
-      await client.preferences.set(storageKey, acknowledgment, storageNamespace);
+      const now = new Date().toISOString();
+      await client.storage.set(lessonId, { acknowledgedAt: now }, storageNamespace, 'user');
       isAcknowledged = true;
-      acknowledgedAt = timestamp;
+      acknowledgedAt = now;
       await client.ui.toast({ message: 'Lesson policy acknowledged', variant: 'success' });
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'The acknowledgment could not be saved.';
-    } finally {
-      isSubmitting = false;
-      await reportHeight();
-    }
-  }
-
-  async function undoAcknowledgment() {
-    if (isSubmitting || !storageKey) return;
-
-    isSubmitting = true;
-    errorMessage = '';
-
-    try {
-      await client.preferences.delete(storageKey, storageNamespace);
-      isAcknowledged = false;
-      acknowledgedAt = null;
-    } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'The acknowledgment could not be cleared.';
     } finally {
       isSubmitting = false;
       await reportHeight();
@@ -80,15 +58,19 @@
     async function initialize() {
       try {
         const context = await client.context.get();
-        const lessonId = context.surface?.resource?.type === 'lesson' ? context.surface.resource.id : null;
-        if (!lessonId) throw new Error('Lesson context is unavailable.');
+        const resourceLessonId = context.surface?.resource?.type === 'lesson' ? context.surface.resource.id : null;
+        if (!resourceLessonId) throw new Error('Lesson context is unavailable.');
 
-        storageKey = `lesson-${lessonId}`;
-        const acknowledgment = await client.preferences.get<AcknowledgmentRecord>(storageKey, storageNamespace);
+        lessonId = resourceLessonId;
+        const acknowledgment = await client.storage.get<AcknowledgmentRecord>(
+          resourceLessonId,
+          storageNamespace,
+          'user'
+        );
         if (disposed) return;
 
-        isAcknowledged = Boolean(acknowledgment?.acknowledged);
-        acknowledgedAt = acknowledgment?.timestamp ?? null;
+        isAcknowledged = Boolean(acknowledgment);
+        acknowledgedAt = acknowledgment?.acknowledgedAt ?? null;
       } catch (error) {
         if (disposed) return;
 
@@ -132,10 +114,6 @@
           <span>{formattedTimestamp}</span>
         {/if}
       </div>
-      <button class="undo" type="button" disabled={isSubmitting} onclick={undoAcknowledgment}>
-        <span aria-hidden="true">↶</span>
-        {isSubmitting ? 'Updating…' : 'Undo'}
-      </button>
     </section>
   {:else}
     <section class="card prompt" data-testid="lesson-acknowledgment-box">
@@ -237,16 +215,6 @@
   .primary {
     color: var(--cio-accent-foreground);
     background: var(--cio-accent);
-  }
-
-  .undo {
-    color: var(--cio-foreground-muted);
-    background: transparent;
-  }
-
-  .undo:hover:not(:disabled) {
-    color: var(--cio-foreground);
-    background: var(--cio-surface);
   }
 
   .error {
