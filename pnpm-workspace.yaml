@@ -1,6 +1,7 @@
 packages:
   - "announcement-banner"
   - "certificate-studio"
+  - "course-calendar"
   - "lesson-acknowledgment"
   - "linkedin-sharing"
   - "reading-time"

@@ -14,6 +14,12 @@
       "release": true
     },
     {
+      "id": "com.classroomio.course-calendar",
+      "path": "course-calendar",
+      "kind": "first-party",
+      "release": true
+    },
+    {
       "id": "com.classroomio.lesson-acknowledgment",
       "path": "lesson-acknowledgment",
       "kind": "first-party",
