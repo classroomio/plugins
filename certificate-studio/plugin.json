@@ -3,10 +3,12 @@
   "manifestVersion": 1,
   "id": "com.classroomio.certificate-studio",
   "name": "Certificate Studio",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Design and customize professional certificate templates for your courses.",
   "publisher": "ClassroomIO",
-  "icon": { "resource": "assets/icon.svg" },
+  "icon": {
+    "resource": "assets/icon.svg"
+  },
   "license": "Apache-2.0",
   "engines": {
     "classroomio": ">=2.0.0",
@@ -33,7 +35,9 @@
         "title": "Certificate Studio",
         "location": "organization.settings",
         "page": "certificate-studio",
-        "icon": { "resource": "assets/icon.svg" },
+        "icon": {
+          "resource": "assets/icon.svg"
+        },
         "visibility": "organization.admin"
       }
     ],
@@ -58,5 +62,11 @@
     "storesCustomerData": true,
     "retentionAfterUninstallDays": 30,
     "privacyPolicyUrl": "https://classroomio.com/privacy"
+  },
+  "permissions": {
+    "required": [
+      "plugin.storage:read",
+      "plugin.storage:write"
+    ]
   }
 }

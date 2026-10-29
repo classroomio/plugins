@@ -12,15 +12,14 @@ export const ZSafeUrl = z
   .refine(
     (val: string) => {
       if (!val) return true;
-      if (val.startsWith('data:image/')) return true;
       try {
         const parsed = new URL(val);
-        return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+        return parsed.protocol === 'https:';
       } catch {
         return false;
       }
     },
-    { message: 'URL must use https or data:image scheme' }
+    { message: 'URL must use HTTPS' }
   );
 
 export const ZCertificateSignatoryV1 = z.object({

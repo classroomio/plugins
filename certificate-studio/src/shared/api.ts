@@ -23,33 +23,21 @@ function isStudioTemplate(value: unknown): value is StudioTemplate {
 export class StudioApiClient {
   constructor(private client: ClassroomIOClient) {}
 
-  private async getTemplatesMap(): Promise<Record<string, StudioTemplate>> {
+  async listTemplates(): Promise<StudioTemplate[]> {
     try {
-      const raw = await this.client.preferences.get<Record<string, StudioTemplate>>(
-        'templates_catalog',
-        TEMPLATE_NAMESPACE
-      );
-      return raw || {};
+      const records = await this.client.storage.list<StudioTemplate>(TEMPLATE_NAMESPACE, 'organization');
+      return (records || [])
+        .map((record) => record.value)
+        .filter(isStudioTemplate)
+        .filter((template) => template.isActive)
+        .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
     } catch {
-      return {};
+      return [];
     }
   }
 
-  private async saveTemplatesMap(map: Record<string, StudioTemplate>): Promise<void> {
-    await this.client.preferences.set('templates_catalog', map, TEMPLATE_NAMESPACE);
-  }
-
-  async listTemplates(): Promise<StudioTemplate[]> {
-    const map = await this.getTemplatesMap();
-    return Object.values(map)
-      .filter(isStudioTemplate)
-      .filter((template) => template.isActive)
-      .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
-  }
-
   async getTemplate(id: string): Promise<StudioTemplate> {
-    const map = await this.getTemplatesMap();
-    const template = map[id];
+    const template = await this.client.storage.get<StudioTemplate>(id, TEMPLATE_NAMESPACE, 'organization');
     if (!isStudioTemplate(template) || !template.isActive) {
       throw new Error('Certificate template not found');
     }
@@ -79,9 +67,7 @@ export class StudioApiClient {
       updatedAt: now
     };
 
-    const map = await this.getTemplatesMap();
-    map[template.id] = template;
-    await this.saveTemplatesMap(map);
+    await this.client.storage.set(template.id, template, TEMPLATE_NAMESPACE, 'organization');
     return template;
   }
 
@@ -93,9 +79,7 @@ export class StudioApiClient {
       design?: CertificateDesignV1;
     }
   ): Promise<StudioTemplate> {
-    const map = await this.getTemplatesMap();
-    const currentTemplate = map[id];
-    if (!currentTemplate) throw new Error('Certificate template not found');
+    const currentTemplate = await this.getTemplate(id);
 
     const updatedTemplate: StudioTemplate = {
       ...currentTemplate,
@@ -106,16 +90,19 @@ export class StudioApiClient {
       updatedAt: new Date().toISOString()
     };
 
-    map[id] = updatedTemplate;
-    await this.saveTemplatesMap(map);
+    await this.client.storage.set(id, updatedTemplate, TEMPLATE_NAMESPACE, 'organization');
     return updatedTemplate;
   }
 
   async deleteTemplate(id: string): Promise<void> {
-    const map = await this.getTemplatesMap();
-    if (map[id]) {
-      map[id] = { ...map[id], isActive: false, updatedAt: new Date().toISOString() };
-      await this.saveTemplatesMap(map);
+    const currentTemplate = await this.getTemplate(id).catch(() => null);
+    if (currentTemplate) {
+      const archived: StudioTemplate = {
+        ...currentTemplate,
+        isActive: false,
+        updatedAt: new Date().toISOString()
+      };
+      await this.client.storage.set(id, archived, TEMPLATE_NAMESPACE, 'organization');
     }
   }
 

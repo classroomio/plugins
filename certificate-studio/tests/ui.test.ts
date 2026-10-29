@@ -6,21 +6,26 @@ import type { ClassroomIOClient } from '@classroomio/plugin-sdk';
 import { DEFAULT_CERTIFICATE_DESIGN_V1 } from '../src/kit';
 
 describe('Certificate Studio UI & Client Tests', () => {
-  it('StudioApiClient loads templates via host preferences', async () => {
+  it('StudioApiClient loads templates via host storage', async () => {
     const mockClient = {
-      preferences: {
-        get: vi.fn().mockResolvedValue({
-          'tmpl-1': {
-            id: 'tmpl-1',
-            name: 'Test Template',
-            designVersion: 1,
-            design: DEFAULT_CERTIFICATE_DESIGN_V1,
-            revision: 1,
-            isActive: true,
-            createdAt: new Date().toISOString(),
+      storage: {
+        list: vi.fn().mockResolvedValue([
+          {
+            key: 'tmpl-1',
+            value: {
+              id: 'tmpl-1',
+              name: 'Test Template',
+              designVersion: 1,
+              design: DEFAULT_CERTIFICATE_DESIGN_V1,
+              revision: 1,
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
             updatedAt: new Date().toISOString()
           }
-        }),
+        ]),
+        get: vi.fn(),
         set: vi.fn(),
         delete: vi.fn()
       }
@@ -31,7 +36,7 @@ describe('Certificate Studio UI & Client Tests', () => {
 
     expect(templates.length).toBe(1);
     expect(templates[0].id).toBe('tmpl-1');
-    expect(mockClient.preferences.get).toHaveBeenCalledWith('templates_catalog', 'certificate-templates');
+    expect(mockClient.storage.list).toHaveBeenCalledWith('certificate-templates', 'organization');
   });
 
   it('Verifies zero private ClassroomIO imports in plugin source', () => {
@@ -70,9 +75,9 @@ describe('Certificate Studio UI & Client Tests', () => {
     ];
 
     for (const file of files) {
-      const content = fs.readFileSync(file, 'utf8');
+      const fileContent = fs.readFileSync(file, 'utf8');
       for (const pattern of FORBIDDEN_PATTERNS) {
-        const matches = content.match(pattern);
+        const matches = fileContent.match(pattern);
         if (matches) {
           throw new Error(`Forbidden private import or storage pattern matching ${pattern} found in file: ${file}`);
         }

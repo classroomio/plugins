@@ -4,7 +4,7 @@
   import Loader2 from '@lucide/svelte/icons/loader-2';
   import Check from '@lucide/svelte/icons/check';
   import Award from '@lucide/svelte/icons/award';
-  import { renderCertificatePreview } from "../kit";
+  import { renderCertificatePreviewDocument } from '../kit';
   import { StudioApiClient } from '../shared/api';
   import type { StudioTemplate } from '../shared/types';
 
@@ -16,6 +16,27 @@
   let errorMessage = $state<string | null>(null);
   let applyingId = $state<string | null>(null);
   let appliedId = $state<string | null>(null);
+  let containerWidth = $state(340);
+  let pickerEl = $state<HTMLElement | null>(null);
+
+  const cardWidth = $derived(Math.max(80, (containerWidth - 12) / 2));
+  const cardScale = $derived(cardWidth / 1100);
+
+  $effect(() => {
+    if (!pickerEl || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
+        if (height > 0) {
+          void client.ui.resize(height + 24);
+        }
+      }
+    });
+
+    observer.observe(pickerEl);
+    return () => observer.disconnect();
+  });
 
   onMount(async () => {
     try {
@@ -34,16 +55,16 @@
     }
   });
 
-  function getMiniPreview(template: StudioTemplate) {
+  function getPreviewDoc(template: StudioTemplate): string {
     const previewData = {
       recipientName: 'Student Name',
       courseName: 'Course Title',
-      courseDescription: template.description || '',
+      courseDescription: template.description || 'Certificate description',
       orgName: 'Academy',
       date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short' }),
       certificateId: 'SAMPLE-001'
     };
-    return renderCertificatePreview(template.design, previewData).html;
+    return renderCertificatePreviewDocument(template.design, previewData);
   }
 
   async function handleApply(template: StudioTemplate) {
@@ -51,11 +72,11 @@
     errorMessage = null;
 
     try {
-      await client.certificateTemplates.apply({
-        externalTemplateId: template.id,
-        externalTemplateVersion: template.revision,
-        name: template.name,
-        design: template.design
+      await client.action('apply', {
+        schema: 'classroomio.certificate-document',
+        version: 1,
+        document: template.design,
+        name: template.name
       });
 
       appliedId = template.id;
@@ -75,12 +96,12 @@
   }
 </script>
 
-<div class="picker-container">
+<div class="picker-container" bind:this={pickerEl}>
   <div class="picker-header">
     <div class="header-icon-box">
-      <Award size={18} />
+      <Award size={16} />
     </div>
-    <div>
+    <div class="header-text">
       <h3 class="picker-title">Organization Templates</h3>
       <p class="picker-subtitle">Select a studio template to apply its design to this course</p>
     </div>
@@ -88,7 +109,7 @@
 
   {#if isLoading}
     <div class="state-box">
-      <Loader2 size={24} class="spinner" />
+      <Loader2 size={20} class="spinner" />
       <span>Loading studio templates...</span>
     </div>
   {:else if errorMessage}
@@ -101,38 +122,39 @@
       <p class="empty-subtext">Create templates in Organization Settings > Certificate Studio.</p>
     </div>
   {:else}
-    <div class="templates-list">
+    <div class="grid-container" bind:clientWidth={containerWidth}>
       {#each templates as template (template.id)}
-        <div class="template-item" class:is-applied={appliedId === template.id}>
-          <div class="thumbnail-wrapper">
-            <div class="thumbnail-scaler">
-              {@html getMiniPreview(template)}
-            </div>
+        {@const isApplying = applyingId === template.id}
+        {@const isApplied = appliedId === template.id}
+        <button
+          type="button"
+          class="card-button"
+          class:is-active={isApplied}
+          disabled={isApplying}
+          onclick={() => handleApply(template)}
+          title={`Click to apply ${template.name}`}
+        >
+          <div class="frame-wrapper">
+            <iframe
+              class="card-iframe"
+              srcdoc={getPreviewDoc(template)}
+              tabindex="-1"
+              aria-hidden="true"
+              title={template.name}
+              style="transform: scale({cardScale});"
+            ></iframe>
           </div>
 
-          <div class="item-info">
-            <h4 class="item-name">{template.name}</h4>
-            <span class="item-badge">{template.design.templateId}</span>
-          </div>
-
-          <button
-            type="button"
-            class="apply-btn"
-            class:applied={appliedId === template.id}
-            disabled={applyingId === template.id}
-            onclick={() => handleApply(template)}
-          >
-            {#if applyingId === template.id}
-              <Loader2 size={14} class="spinner" />
-              <span>Applying...</span>
-            {:else if appliedId === template.id}
-              <Check size={14} />
-              <span>Applied</span>
+          <span class="card-banner" class:applied-banner={isApplied}>
+            {#if isApplying}
+              <Loader2 size={10} class="spinner inline-icon" /> Applying...
+            {:else if isApplied}
+              <Check size={10} class="inline-icon" /> {template.name}
             {:else}
-              <span>Apply</span>
+              {template.name}
             {/if}
-          </button>
-        </div>
+          </span>
+        </button>
       {/each}
     </div>
   {/if}
@@ -140,39 +162,42 @@
 
 <style>
   .picker-container {
-    padding: 16px;
-    background: var(--cio-color-surface, #1e293b);
-    color: var(--cio-color-text, #f8fafc);
-    border-radius: 8px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 0;
+    font-family: var(--cio-font-sans, 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    color: var(--cio-foreground, #0f172a);
   }
 
   .picker-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
   .header-icon-box {
-    color: var(--cio-color-primary, #3b82f6);
-    background: rgba(59, 130, 246, 0.1);
-    padding: 6px;
+    color: var(--cio-accent, #2563eb);
+    background: rgba(37, 99, 235, 0.1);
+    padding: 5px;
     border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
+  .header-text {
+    min-width: 0;
+  }
+
   .picker-title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     margin: 0;
+    line-height: 1.2;
   }
 
   .picker-subtitle {
-    font-size: 12px;
-    color: var(--cio-color-text-secondary, #94a3b8);
+    font-size: 11px;
+    color: var(--cio-foreground-muted, #64748b);
     margin: 2px 0 0;
   }
 
@@ -181,125 +206,122 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 24px;
-    font-size: 13px;
-    color: var(--cio-color-text-secondary, #94a3b8);
+    padding: 20px;
+    font-size: 12px;
+    color: var(--cio-foreground-muted, #64748b);
   }
 
   .state-box.error {
-    color: #ef4444;
+    color: var(--cio-destructive, #ef4444);
   }
 
   .empty-box {
     text-align: center;
-    padding: 24px;
-    font-size: 13px;
-    color: var(--cio-color-text-secondary, #94a3b8);
+    padding: 20px;
+    font-size: 12px;
+    color: var(--cio-foreground-muted, #64748b);
+    background: var(--cio-surface-muted, rgba(0, 0, 0, 0.04));
+    border-radius: 8px;
   }
 
   .empty-subtext {
     font-size: 11px;
-    color: #64748b;
+    color: var(--cio-foreground-muted, #94a3b8);
     margin-top: 4px;
   }
 
-  .templates-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .template-item {
-    display: flex;
-    align-items: center;
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--cio-color-border, #334155);
-    border-radius: 8px;
-    transition: border-color 0.15s ease;
   }
 
-  .template-item:hover {
-    border-color: rgba(59, 130, 246, 0.4);
-  }
-
-  .template-item.is-applied {
-    border-color: rgba(34, 197, 94, 0.6);
-    background: rgba(34, 197, 94, 0.05);
-  }
-
-  .thumbnail-wrapper {
+  .card-button {
     position: relative;
-    width: 66px;
-    height: 46px;
-    border-radius: 4px;
+    aspect-ratio: 1.4 / 1;
     overflow: hidden;
-    background: #000;
-    flex-shrink: 0;
+    border-radius: 6px;
+    border: 1px solid var(--cio-border, #e2e8f0);
+    background: #ffffff;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   }
 
-  .thumbnail-scaler {
+  .card-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    border-color: var(--cio-accent, #2563eb);
+  }
+
+  .card-button.is-active {
+    border-color: var(--cio-accent, #2563eb);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    outline: 2px solid var(--cio-accent, #2563eb);
+    outline-offset: 1px;
+  }
+
+  .card-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .frame-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #f8fafc;
+  }
+
+  .card-iframe {
     position: absolute;
     top: 0;
     left: 0;
     width: 1100px;
     height: 780px;
-    transform: scale(calc(66 / 1100));
-    transform-origin: top left;
+    border: none;
     pointer-events: none;
+    transform-origin: 0 0;
   }
 
-  .item-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .item-name {
-    font-size: 13px;
+  .card-banner {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 4px 8px;
+    text-align: center;
+    font-size: 9px;
     font-weight: 600;
-    margin: 0 0 4px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: rgba(15, 23, 42, 0.9);
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .item-badge {
-    font-size: 10px;
-    text-transform: uppercase;
-    font-weight: 500;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--cio-color-text-secondary, #94a3b8);
-    padding: 1px 5px;
-    border-radius: 3px;
-  }
-
-  .apply-btn {
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
-    background: var(--cio-color-primary, #2563eb);
-    color: #ffffff;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
+  }
+
+  .applied-banner {
+    background: var(--cio-accent, #2563eb);
+    color: var(--cio-accent-foreground, #ffffff);
+  }
+
+  :global(.inline-icon) {
+    display: inline-block;
     flex-shrink: 0;
-  }
-
-  .apply-btn:hover:not(:disabled) {
-    background: #1d4ed8;
-  }
-
-  .apply-btn.applied {
-    background: #16a34a;
-  }
-
-  .apply-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 
   :global(.spinner) {
