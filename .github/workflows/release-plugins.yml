@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: classroomio/classroomio
-          ref: 70916e365baab864e103c850ceb2a7d38c8821c4
+          ref: d0d2453b973b8045a9e470640d963f47e4f31803
           path: core
       - name: Link pinned ClassroomIO boundary packages
         run: ln -s "$GITHUB_WORKSPACE/core" "$GITHUB_WORKSPACE/../classroomio"
@@ -49,8 +49,6 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @classroomio/plugin-sdk build
-          pnpm --filter @classroomio/plugin-design build
-          pnpm --filter @classroomio/certificate-kit build
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm test
