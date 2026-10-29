@@ -4,7 +4,7 @@
   "id": "com.classroomio.course-calendar",
   "slug": "course-calendar",
   "name": "Course & Live Calendar",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "View upcoming live course sessions, instructor schedules, and certificate deadlines across your academy.",
   "publisher": "ClassroomIO",
   "icon": {
@@ -30,7 +30,7 @@
       {
         "id": "course-calendar-navigation",
         "title": "Course Calendar",
-        "location": "lms.navigation",
+        "location": "organization.navigation",
         "page": "course-calendar",
         "icon": {
           "resource": "assets/icon.svg"
