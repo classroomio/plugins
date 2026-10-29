@@ -358,7 +358,9 @@
 
 <style>
   .page-container {
-    min-height: 100vh;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
     background: var(--cio-background, #f8fafc);
     color: var(--cio-foreground, #0f172a);
     font-family: inherit;

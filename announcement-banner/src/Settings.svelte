@@ -31,7 +31,7 @@
     const nextConfig = { ...config, revision: config.revision + 1 };
 
     try {
-      await client.preferences.set('config', nextConfig, 'announcement');
+      await client.storage.set('config', nextConfig, 'announcement', 'organization');
       config = nextConfig;
       saved = true;
       await client.ui.toast({ message: 'Announcement settings saved', variant: 'success' });
@@ -55,7 +55,7 @@
 
     async function initialize() {
       try {
-        const stored = await client.preferences.get<AnnouncementConfig>('config', 'announcement');
+        const stored = await client.storage.get<AnnouncementConfig>('config', 'announcement', 'organization');
         if (!disposed) config = normalizeConfig(stored);
       } catch (error) {
         if (!disposed) {
@@ -261,7 +261,7 @@
     max-width: 960px;
     margin: 0 auto;
     padding: 24px 20px 48px;
-    font-family: inherit;
+    font-family: var(--cio-font-sans, 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
     color: var(--cio-foreground, #0f172a);
   }
 
@@ -658,6 +658,7 @@
 
   /* Buttons */
   .cio-btn {
+    font-family: inherit;
     display: inline-flex;
     align-items: center;
     justify-content: center;

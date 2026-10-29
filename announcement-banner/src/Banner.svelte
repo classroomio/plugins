@@ -22,7 +22,7 @@
   async function dismiss() {
     dismissed = true;
     try {
-      await client.preferences.set(dismissalKey, true, 'announcement');
+      await client.storage.set(dismissalKey, { dismissed: true }, 'announcement', 'user');
     } catch {
       // Dismiss immediately even if the preference cannot be persisted.
     } finally {
@@ -39,11 +39,12 @@
 
     async function initialize() {
       try {
-        const storedConfig = await client.preferences.get<AnnouncementConfig>('config', 'announcement');
+        const storedConfig = await client.storage.get<AnnouncementConfig>('config', 'announcement', 'organization');
         if (disposed) return;
 
         config = normalizeConfig(storedConfig);
-        dismissed = Boolean(await client.preferences.get(dismissalKey, 'announcement'));
+        const storedDismissal = await client.storage.get<{ dismissed: boolean }>(dismissalKey, 'announcement', 'user');
+        dismissed = Boolean(storedDismissal?.dismissed);
       } catch {
         dismissed = false;
       } finally {
