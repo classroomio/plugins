@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { CalendarEvent, PluginCourseRecord, PluginLessonRecord } from './types';
+import type {
+  CalendarEvent,
+  PluginCourseRecord,
+  PluginExerciseRecord,
+  PluginLessonRecord
+} from './types';
 import {
   buildCalendarEvents,
   buildMonthGrid,
@@ -69,7 +74,7 @@ describe('calendar-utils', () => {
     expect(first).toEqual(second);
   });
 
-  it('derives calendar events from flat course and lesson records', () => {
+  it('groups same-day created lessons/exercises under course_created for admins and emits separate events for later days', () => {
     const courses: PluginCourseRecord[] = [
       {
         id: 'course-1',
@@ -85,8 +90,8 @@ describe('calendar-utils', () => {
         sessionTimezone: 'Africa/Lagos',
         certificateDeadline: '2026-10-30T23:59:00.000Z',
         instructor: { name: 'Grace Hopper', avatarUrl: null },
-        createdAt: '2026-10-01T00:00:00.000Z',
-        updatedAt: '2026-10-01T00:00:00.000Z'
+        createdAt: '2026-10-01T10:00:00.000Z',
+        updatedAt: '2026-10-01T10:00:00.000Z'
       }
     ];
 
@@ -103,18 +108,108 @@ describe('calendar-utils', () => {
         recordingUrl: null,
         sessionDurationMinutes: 90,
         instructor: null,
-        createdAt: '2026-10-01T00:00:00.000Z',
-        updatedAt: '2026-10-01T00:00:00.000Z'
+        createdAt: '2026-10-01T10:05:00.000Z',
+        updatedAt: '2026-10-01T10:05:00.000Z'
+      },
+      {
+        id: 'lesson-2',
+        courseId: 'course-1',
+        title: 'Raft Deep Dive',
+        slug: 'raft-deep-dive',
+        order: 2,
+        isUnlocked: true,
+        lessonAt: null,
+        callUrl: null,
+        recordingUrl: null,
+        sessionDurationMinutes: null,
+        instructor: null,
+        createdAt: '2026-10-05T11:00:00.000Z',
+        updatedAt: '2026-10-05T11:00:00.000Z'
       }
     ];
 
-    const derived = buildCalendarEvents(courses, lessons);
-    expect(derived).toHaveLength(2);
-    expect(derived[0]?.type).toBe('live_session');
-    expect(derived[0]?.durationMinutes).toBe(90);
-    expect(derived[0]?.timezone).toBe('Africa/Lagos');
-    expect(derived[0]?.instructor?.name).toBe('Grace Hopper');
-    expect(derived[1]?.type).toBe('certificate_deadline');
+    const exercises: PluginExerciseRecord[] = [
+      {
+        id: 'ex-1',
+        courseId: 'course-1',
+        lessonId: null,
+        title: 'Quiz 1',
+        description: null,
+        order: 1,
+        createdAt: '2026-10-01T10:10:00.000Z',
+        updatedAt: '2026-10-01T10:10:00.000Z'
+      }
+    ];
+
+    const derived = buildCalendarEvents(courses, lessons, exercises, 'admin');
+    const courseCreated = derived.find((event) => event.type === 'course_created');
+    expect(courseCreated).toBeDefined();
+    expect(courseCreated?.relatedItems).toHaveLength(2);
+
+    const laterLessonCreated = derived.find((event) => event.type === 'lesson_created');
+    expect(laterLessonCreated?.title).toBe('Raft Deep Dive');
+  });
+
+  it('tracks completed courses, lessons, and exercises for students', () => {
+    const courses: PluginCourseRecord[] = [
+      {
+        id: 'course-1',
+        title: 'Python 101',
+        slug: 'python-101',
+        description: null,
+        imageUrl: null,
+        type: 'SELF_PACED',
+        status: 'ACTIVE',
+        visibility: 'public',
+        published: true,
+        publishedAt: null,
+        sessionTimezone: null,
+        certificateDeadline: null,
+        completedAt: '2026-10-12T16:00:00.000Z',
+        instructor: null,
+        createdAt: '2026-10-01T10:00:00.000Z',
+        updatedAt: '2026-10-01T10:00:00.000Z'
+      }
+    ];
+
+    const lessons: PluginLessonRecord[] = [
+      {
+        id: 'lesson-1',
+        courseId: 'course-1',
+        title: 'Variables & Types',
+        slug: 'variables-and-types',
+        order: 1,
+        isUnlocked: true,
+        lessonAt: null,
+        callUrl: null,
+        recordingUrl: null,
+        sessionDurationMinutes: null,
+        completedAt: '2026-10-10T12:00:00.000Z',
+        instructor: null,
+        createdAt: '2026-10-01T10:00:00.000Z',
+        updatedAt: '2026-10-01T10:00:00.000Z'
+      }
+    ];
+
+    const exercises: PluginExerciseRecord[] = [
+      {
+        id: 'ex-1',
+        courseId: 'course-1',
+        lessonId: null,
+        title: 'Python Basics Exercise',
+        description: null,
+        order: 1,
+        completedAt: '2026-10-11T15:30:00.000Z',
+        createdAt: '2026-10-01T10:00:00.000Z',
+        updatedAt: '2026-10-01T10:00:00.000Z'
+      }
+    ];
+
+    const derived = buildCalendarEvents(courses, lessons, exercises, 'student');
+    expect(derived.map((e) => e.type)).toEqual([
+      'lesson_completed',
+      'exercise_completed',
+      'course_completed'
+    ]);
   });
 });
-

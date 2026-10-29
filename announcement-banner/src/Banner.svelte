@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { createClassroomIOClient } from '@classroomio/plugin-sdk';
   import { DEFAULT_CONFIG, isSafeHostPath, normalizeConfig, type AnnouncementConfig } from './config';
 
@@ -7,6 +7,7 @@
   let config = $state<AnnouncementConfig>({ ...DEFAULT_CONFIG });
   let ready = $state(false);
   let dismissed = $state(false);
+  let bannerEl = $state<HTMLElement | null>(null);
   let resizeObserver: ResizeObserver | null = null;
 
   const message = $derived(config.message);
@@ -15,7 +16,8 @@
   const dismissalKey = $derived(`dismissed-${config.revision}`);
 
   async function reportHeight() {
-    const height = dismissed ? 0 : document.documentElement.scrollHeight;
+    await tick();
+    const height = !ready || dismissed || !bannerEl ? 0 : bannerEl.offsetHeight;
     await client.ui.resize(height);
   }
 
@@ -71,6 +73,7 @@
 
 {#if ready && !dismissed}
   <aside
+    bind:this={bannerEl}
     class="banner-wrapper"
     style:background-color={config.backgroundColor}
     aria-label="Student Announcement"

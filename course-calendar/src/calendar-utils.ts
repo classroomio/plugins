@@ -1,4 +1,10 @@
-import type { CalendarEvent, PluginCourseRecord, PluginLessonRecord } from './types';
+import type {
+  CalendarEvent,
+  CalendarRelatedItem,
+  PluginCourseRecord,
+  PluginExerciseRecord,
+  PluginLessonRecord
+} from './types';
 
 export interface CalendarDayCell {
   date: Date;
@@ -13,9 +19,39 @@ export type SessionTimingStatus = 'live' | 'upcoming' | 'completed';
 
 const DEFAULT_LESSON_DURATION_MINUTES = 60;
 
+export function getEventTypeLabel(event: CalendarEvent): string {
+  switch (event.type) {
+    case 'course_created': {
+      const count = event.relatedItems?.length ?? 0;
+      return count > 0
+        ? `Course Created (+${count} item${count === 1 ? '' : 's'})`
+        : 'Course Created';
+    }
+    case 'lesson_created':
+      return 'Lesson Created';
+    case 'exercise_created':
+      return 'Exercise Created';
+    case 'course_completed':
+      return 'Course Completed';
+    case 'lesson_completed':
+      return 'Lesson Completed';
+    case 'exercise_completed':
+      return 'Exercise Completed';
+    case 'certificate_deadline':
+      return 'Certificate Deadline';
+    case 'compliance_due':
+      return 'Compliance Due';
+    case 'live_session':
+    default:
+      return 'Live Session';
+  }
+}
+
 export function buildCalendarEvents(
   courses: PluginCourseRecord[],
-  lessons: PluginLessonRecord[]
+  lessons: PluginLessonRecord[],
+  exercises: PluginExerciseRecord[] = [],
+  role: 'admin' | 'tutor' | 'student' = 'admin'
 ): CalendarEvent[] {
   const courseById = new Map<string, PluginCourseRecord>();
   for (const courseItem of courses) {
@@ -25,10 +61,10 @@ export function buildCalendarEvents(
   const events: CalendarEvent[] = [];
 
   for (const lesson of lessons) {
-    if (!lesson.lessonAt) continue;
+    if (!lesson.lessonAt || !lesson.callUrl) continue;
 
     const courseItem = courseById.get(lesson.courseId);
-    if (!courseItem) continue;
+    if (!courseItem || courseItem.type !== 'LIVE_CLASS') continue;
 
     const startsAtDate = new Date(lesson.lessonAt);
     if (Number.isNaN(startsAtDate.getTime())) continue;
@@ -103,6 +139,245 @@ export function buildCalendarEvents(
           }
         : null
     });
+  }
+
+  if (role === 'admin' || role === 'tutor') {
+    const lessonsByCourse = new Map<string, PluginLessonRecord[]>();
+    for (const lesson of lessons) {
+      const list = lessonsByCourse.get(lesson.courseId) ?? [];
+      list.push(lesson);
+      lessonsByCourse.set(lesson.courseId, list);
+    }
+
+    const exercisesByCourse = new Map<string, PluginExerciseRecord[]>();
+    for (const ex of exercises) {
+      const list = exercisesByCourse.get(ex.courseId) ?? [];
+      list.push(ex);
+      exercisesByCourse.set(ex.courseId, list);
+    }
+
+    for (const courseItem of courses) {
+      const courseCreatedDate = new Date(courseItem.createdAt);
+      const hasValidCourseDate = !Number.isNaN(courseCreatedDate.getTime());
+      const courseDayKey = hasValidCourseDate ? toLocalDateKey(courseCreatedDate) : null;
+
+      const courseLessons = lessonsByCourse.get(courseItem.id) ?? [];
+      const courseExercises = exercisesByCourse.get(courseItem.id) ?? [];
+
+      const sameDayRelated: CalendarRelatedItem[] = [];
+
+      for (const lesson of courseLessons) {
+        const lessonCreatedDate = new Date(lesson.createdAt);
+        if (Number.isNaN(lessonCreatedDate.getTime())) continue;
+
+        if (courseDayKey && toLocalDateKey(lessonCreatedDate) === courseDayKey) {
+          sameDayRelated.push({
+            id: lesson.id,
+            kind: 'lesson',
+            title: lesson.title,
+            createdAt: lessonCreatedDate.toISOString()
+          });
+        } else {
+          const instructor =
+            lesson.instructor ??
+            (courseItem.instructor
+              ? {
+                  id: `course-instructor:${courseItem.id}`,
+                  name: courseItem.instructor.name,
+                  avatarUrl: courseItem.instructor.avatarUrl
+                }
+              : null);
+
+          events.push({
+            id: `lesson-created:${lesson.id}`,
+            title: lesson.title,
+            type: 'lesson_created',
+            startsAt: lessonCreatedDate.toISOString(),
+            endsAt: lessonCreatedDate.toISOString(),
+            durationMinutes: 0,
+            timezone: courseItem.sessionTimezone ?? null,
+            course: {
+              id: courseItem.id,
+              title: courseItem.title,
+              slug: courseItem.slug,
+              type: courseItem.type
+            },
+            lesson: {
+              id: lesson.id,
+              title: lesson.title,
+              callUrl: lesson.callUrl,
+              recordingUrl: lesson.recordingUrl
+            },
+            instructor
+          });
+        }
+      }
+
+      for (const ex of courseExercises) {
+        const exCreatedDate = new Date(ex.createdAt);
+        if (Number.isNaN(exCreatedDate.getTime())) continue;
+
+        if (courseDayKey && toLocalDateKey(exCreatedDate) === courseDayKey) {
+          sameDayRelated.push({
+            id: ex.id,
+            kind: 'exercise',
+            title: ex.title,
+            createdAt: exCreatedDate.toISOString()
+          });
+        } else {
+          events.push({
+            id: `exercise-created:${ex.id}`,
+            title: ex.title,
+            type: 'exercise_created',
+            startsAt: exCreatedDate.toISOString(),
+            endsAt: exCreatedDate.toISOString(),
+            durationMinutes: 0,
+            timezone: courseItem.sessionTimezone ?? null,
+            course: {
+              id: courseItem.id,
+              title: courseItem.title,
+              slug: courseItem.slug,
+              type: courseItem.type
+            },
+            lesson: null,
+            exercise: {
+              id: ex.id,
+              title: ex.title
+            },
+            instructor: courseItem.instructor
+              ? {
+                  id: `course-instructor:${courseItem.id}`,
+                  name: courseItem.instructor.name,
+                  avatarUrl: courseItem.instructor.avatarUrl
+                }
+              : null
+          });
+        }
+      }
+
+      if (hasValidCourseDate) {
+        events.push({
+          id: `course-created:${courseItem.id}`,
+          title: courseItem.title,
+          type: 'course_created',
+          startsAt: courseCreatedDate.toISOString(),
+          endsAt: courseCreatedDate.toISOString(),
+          durationMinutes: 0,
+          timezone: courseItem.sessionTimezone ?? null,
+          course: {
+            id: courseItem.id,
+            title: courseItem.title,
+            slug: courseItem.slug,
+            type: courseItem.type
+          },
+          lesson: null,
+          relatedItems: sameDayRelated,
+          instructor: courseItem.instructor
+            ? {
+                id: `course-instructor:${courseItem.id}`,
+                name: courseItem.instructor.name,
+                avatarUrl: courseItem.instructor.avatarUrl
+              }
+            : null
+        });
+      }
+    }
+  } else {
+    for (const courseItem of courses) {
+      if (!courseItem.completedAt) continue;
+
+      const completedDate = new Date(courseItem.completedAt);
+      if (Number.isNaN(completedDate.getTime())) continue;
+
+      events.push({
+        id: `course-completed:${courseItem.id}`,
+        title: courseItem.title,
+        type: 'course_completed',
+        startsAt: completedDate.toISOString(),
+        endsAt: completedDate.toISOString(),
+        durationMinutes: 0,
+        timezone: courseItem.sessionTimezone ?? null,
+        course: {
+          id: courseItem.id,
+          title: courseItem.title,
+          slug: courseItem.slug,
+          type: courseItem.type
+        },
+        lesson: null,
+        instructor: courseItem.instructor
+          ? {
+              id: `course-instructor:${courseItem.id}`,
+              name: courseItem.instructor.name,
+              avatarUrl: courseItem.instructor.avatarUrl
+            }
+          : null
+      });
+    }
+
+    for (const lesson of lessons) {
+      if (!lesson.completedAt) continue;
+
+      const courseItem = courseById.get(lesson.courseId);
+      if (!courseItem) continue;
+
+      const completedDate = new Date(lesson.completedAt);
+      if (Number.isNaN(completedDate.getTime())) continue;
+
+      events.push({
+        id: `lesson-completed:${lesson.id}`,
+        title: lesson.title,
+        type: 'lesson_completed',
+        startsAt: completedDate.toISOString(),
+        endsAt: completedDate.toISOString(),
+        durationMinutes: 0,
+        timezone: courseItem.sessionTimezone ?? null,
+        course: {
+          id: courseItem.id,
+          title: courseItem.title,
+          slug: courseItem.slug,
+          type: courseItem.type
+        },
+        lesson: {
+          id: lesson.id,
+          title: lesson.title,
+          callUrl: lesson.callUrl,
+          recordingUrl: lesson.recordingUrl
+        },
+        instructor: lesson.instructor
+      });
+    }
+
+    for (const ex of exercises) {
+      if (!ex.completedAt) continue;
+
+      const courseItem = courseById.get(ex.courseId);
+      if (!courseItem) continue;
+
+      const completedDate = new Date(ex.completedAt);
+      if (Number.isNaN(completedDate.getTime())) continue;
+
+      events.push({
+        id: `exercise-completed:${ex.id}`,
+        title: ex.title,
+        type: 'exercise_completed',
+        startsAt: completedDate.toISOString(),
+        endsAt: completedDate.toISOString(),
+        durationMinutes: 0,
+        timezone: courseItem.sessionTimezone ?? null,
+        course: {
+          id: courseItem.id,
+          title: courseItem.title,
+          slug: courseItem.slug,
+          type: courseItem.type
+        },
+        lesson: null,
+        exercise: {
+          id: ex.id,
+          title: ex.title
+        },
+        instructor: null
+      });
+    }
   }
 
   events.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
@@ -287,4 +562,3 @@ export function formatRelativeTime(iso: string, now = new Date()): string {
   const pastDays = Math.floor(pastHours / 24);
   return `${pastDays} day${pastDays === 1 ? '' : 's'} ago`;
 }
-

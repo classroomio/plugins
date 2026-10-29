@@ -61,7 +61,8 @@
   "permissions": {
     "required": [
       "course.metadata:read",
-      "lesson.metadata:read"
+      "lesson.metadata:read",
+      "exercise.metadata:read"
     ]
   }
 }

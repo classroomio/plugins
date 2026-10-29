@@ -18,6 +18,7 @@ export interface PluginCourseRecord {
   publishedAt: string | null;
   sessionTimezone: string | null;
   certificateDeadline: string | null;
+  completedAt?: string | null;
   instructor: {
     name: string;
     avatarUrl: string | null;
@@ -37,6 +38,7 @@ export interface PluginLessonRecord {
   callUrl: string | null;
   recordingUrl: string | null;
   sessionDurationMinutes: number | null;
+  completedAt?: string | null;
   instructor: {
     id: string;
     name: string;
@@ -46,15 +48,46 @@ export interface PluginLessonRecord {
   updatedAt: string;
 }
 
+export interface PluginExerciseRecord {
+  id: string;
+  courseId: string;
+  lessonId: string | null;
+  title: string;
+  description: string | null;
+  order: number;
+  dueBy?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PluginListResponse<TItem> {
   role: 'admin' | 'tutor' | 'student';
   items: TItem[];
 }
 
+export type CalendarEventType =
+  | 'live_session'
+  | 'certificate_deadline'
+  | 'compliance_due'
+  | 'course_created'
+  | 'lesson_created'
+  | 'exercise_created'
+  | 'course_completed'
+  | 'lesson_completed'
+  | 'exercise_completed';
+
+export interface CalendarRelatedItem {
+  id: string;
+  kind: 'lesson' | 'exercise';
+  title: string;
+  createdAt: string;
+}
+
 export interface CalendarEvent {
   id: string;
   title: string;
-  type: 'live_session' | 'certificate_deadline' | 'compliance_due';
+  type: CalendarEventType;
   startsAt: string;
   endsAt: string;
   durationMinutes: number;
@@ -66,6 +99,11 @@ export interface CalendarEvent {
     callUrl: string | null;
     recordingUrl: string | null;
   } | null;
+  exercise?: {
+    id: string;
+    title: string;
+  } | null;
+  relatedItems?: CalendarRelatedItem[];
   instructor: {
     id: string;
     name: string;

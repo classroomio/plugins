@@ -1,14 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { createClassroomIOClient, type PluginContext } from '@classroomio/plugin-sdk';
   import type {
     CalendarCourseRef,
     CalendarEvent,
     PluginCourseRecord,
+    PluginExerciseRecord,
     PluginLessonRecord,
     PluginListResponse
   } from './types';
   import CalendarIcon from '@lucide/svelte/icons/calendar';
+  import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
   import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
   import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
   import ClockIcon from '@lucide/svelte/icons/clock';
@@ -34,6 +37,7 @@
     formatRelativeTime,
     getCourseColor,
     getEventTimingStatus,
+    getEventTypeLabel,
     toLocalDateKey
   } from './calendar-utils';
 
@@ -53,12 +57,21 @@
 
   let viewMode = $state<CalendarViewMode>('month');
   let selectedCourseId = $state<string>('all');
-  let selectedTypeFilter = $state<'all' | 'live_session' | 'certificate_deadline'>('all');
+  let selectedTypeFilter = $state<string>('all');
   let searchQuery = $state('');
 
   let currentAnchor = $state(new Date());
   let selectedEvent = $state<CalendarEvent | null>(null);
   let selectedDayKey = $state<string | null>(null);
+  const expandedEventIds = new SvelteSet<string>();
+
+  function toggleEventExpanded(eventId: string) {
+    if (expandedEventIds.has(eventId)) {
+      expandedEventIds.delete(eventId);
+    } else {
+      expandedEventIds.add(eventId);
+    }
+  }
 
   const isSidebarSurface = $derived(context?.surface?.target === 'course.sidebar');
   const lockedCourseId = $derived(
@@ -134,20 +147,24 @@
     const now = new Date();
     let liveCount = 0;
     let upcomingCount = 0;
-    let completedCount = 0;
+    let activityCount = 0;
 
     for (const event of filteredEvents) {
-      const status = getEventTimingStatus(event, now);
-      if (status === 'live') liveCount += 1;
-      else if (status === 'upcoming') upcomingCount += 1;
-      else completedCount += 1;
+      if (event.type === 'live_session') {
+        const status = getEventTimingStatus(event, now);
+        if (status === 'live') liveCount += 1;
+        else if (status === 'upcoming') upcomingCount += 1;
+        else activityCount += 1;
+      } else {
+        activityCount += 1;
+      }
     }
 
     return {
       total: filteredEvents.length,
       liveCount,
       upcomingCount,
-      completedCount
+      activityCount
     };
   });
 
@@ -160,17 +177,30 @@
     error = null;
 
     try {
-      const [coursesResponse, lessonsResponse] = await Promise.all([
+      const [coursesResponse, lessonsResponse, exercisesResponse] = await Promise.all([
         client.action<PluginListResponse<PluginCourseRecord>>('courses:list'),
         client.action<PluginListResponse<PluginLessonRecord>, { courseId?: string }>(
           'lessons:list',
           lockedCourseId ? { courseId: lockedCourseId } : {}
-        )
+        ),
+        client
+          .action<PluginListResponse<PluginExerciseRecord>, { courseId?: string }>(
+            'exercises:list',
+            lockedCourseId ? { courseId: lockedCourseId } : {}
+          )
+          .catch(() => ({ role: 'student' as const, items: [] as PluginExerciseRecord[] }))
       ]);
 
       const scopedCourses = lockedCourseId
         ? coursesResponse.items.filter((courseItem) => courseItem.id === lockedCourseId)
         : coursesResponse.items;
+
+      const derivedEvents = buildCalendarEvents(
+        scopedCourses,
+        lessonsResponse.items,
+        exercisesResponse.items,
+        coursesResponse.role
+      );
 
       role = coursesResponse.role;
       courses = scopedCourses.map((courseItem) => ({
@@ -179,7 +209,7 @@
         slug: courseItem.slug,
         type: courseItem.type
       }));
-      events = buildCalendarEvents(scopedCourses, lessonsResponse.items);
+      events = derivedEvents;
 
       if (lockedCourseId) {
         selectedCourseId = lockedCourseId;
@@ -290,7 +320,7 @@
       <div class="stat-chip">
         <span class="stat-dot upcoming"></span>
         <span class="stat-value">{statsSummary.upcomingCount}</span>
-        <span class="stat-label">Upcoming</span>
+        <span class="stat-label">Upcoming Live</span>
       </div>
       {#if statsSummary.liveCount > 0}
         <div class="stat-chip live">
@@ -301,8 +331,8 @@
       {/if}
       <div class="stat-chip">
         <span class="stat-dot completed"></span>
-        <span class="stat-value">{statsSummary.completedCount}</span>
-        <span class="stat-label">Completed</span>
+        <span class="stat-value">{statsSummary.activityCount}</span>
+        <span class="stat-label">{role === 'student' ? 'Completed' : 'Created'}</span>
       </div>
     </div>
   </header>
@@ -340,6 +370,15 @@
         <div class="select-wrap">
           <select bind:value={selectedTypeFilter} aria-label="Filter by event type">
             <option value="all">All Event Types</option>
+            {#if role === 'student'}
+              <option value="course_completed">Courses Completed</option>
+              <option value="lesson_completed">Lessons Completed</option>
+              <option value="exercise_completed">Exercises Completed</option>
+            {:else}
+              <option value="course_created">Courses Created</option>
+              <option value="lesson_created">Lessons Created</option>
+              <option value="exercise_created">Exercises Created</option>
+            {/if}
             <option value="live_session">Live Sessions</option>
             <option value="certificate_deadline">Certificate Deadlines</option>
           </select>
@@ -348,7 +387,7 @@
         <input
           type="search"
           class="search-input"
-          placeholder="Search session or instructor..."
+          placeholder="Search course, lesson, or instructor..."
           bind:value={searchQuery}
         />
       {/if}
@@ -490,7 +529,10 @@
             <div class="day-sidebar-header">
               <div>
                 <h4>{formatFullDate(selectedDayCell.date)}</h4>
-                <p>{selectedDayCell.events.length} scheduled item{selectedDayCell.events.length === 1 ? '' : 's'}</p>
+                <p>
+                  {selectedDayCell.events.length}
+                  {selectedDayCell.events.length === 1 ? 'item' : 'items'} on this date
+                </p>
               </div>
               <button
                 type="button"
@@ -505,18 +547,16 @@
             {#if selectedDayCell.events.length === 0}
               <div class="day-sidebar-empty">
                 <CalendarIcon size={22} />
-                <p>No live sessions or deadlines on this date.</p>
+                <p>No items recorded on this date.</p>
               </div>
             {:else}
               <div class="day-sidebar-list">
                 {#each selectedDayCell.events as event (event.id)}
                   {@const palette = getCourseColor(event.course.id)}
                   {@const status = getEventTimingStatus(event)}
-                  <button
-                    type="button"
-                    class="agenda-card compact"
-                    onclick={() => (selectedEvent = event)}
-                  >
+                  {@const hasRelated = Boolean(event.relatedItems && event.relatedItems.length > 0)}
+                  {@const isExpanded = expandedEventIds.has(event.id)}
+                  <div class="agenda-card compact">
                     <div class="agenda-card-top">
                       <span
                         class="course-tag"
@@ -525,11 +565,29 @@
                       >
                         {event.course.title}
                       </span>
-                      <span class="status-badge {status}">
-                        {status === 'live' ? 'Live Now' : status === 'upcoming' ? 'Upcoming' : 'Completed'}
+                      <span class="status-badge {event.type === 'live_session' ? status : 'upcoming'}">
+                        {event.type === 'live_session'
+                          ? status === 'live'
+                            ? 'Live Now'
+                            : status === 'upcoming'
+                              ? 'Upcoming'
+                              : 'Completed'
+                          : getEventTypeLabel(event)}
                       </span>
                     </div>
-                    <h5>{event.title}</h5>
+                    <button
+                      type="button"
+                      class="agenda-title-btn"
+                      onclick={() => {
+                        if (hasRelated) {
+                          toggleEventExpanded(event.id);
+                        } else {
+                          selectedEvent = event;
+                        }
+                      }}
+                    >
+                      {event.title}
+                    </button>
                     <div class="agenda-meta">
                       <span>
                         <ClockIcon size={12} />
@@ -542,7 +600,36 @@
                         </span>
                       {/if}
                     </div>
-                  </button>
+                    {#if hasRelated && event.relatedItems}
+                      <div class="related-dropdown" class:open={isExpanded}>
+                        <button
+                          type="button"
+                          class="related-dropdown-trigger"
+                          aria-expanded={isExpanded}
+                          onclick={() => toggleEventExpanded(event.id)}
+                        >
+                          <span>
+                            {isExpanded
+                              ? `Hide ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`
+                              : `Show ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`}
+                          </span>
+                          <span class="trigger-chevron" class:rotated={isExpanded}>
+                            <ChevronDownIcon size={14} />
+                          </span>
+                        </button>
+                        {#if isExpanded}
+                          <ul class="related-items-list">
+                            {#each event.relatedItems as item (item.kind + ':' + item.id)}
+                              <li class="related-item-row">
+                                <span class="related-kind-pill {item.kind}">{item.kind}</span>
+                                <span class="related-item-title">{item.title}</span>
+                              </li>
+                            {/each}
+                          </ul>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
                 {/each}
               </div>
             {/if}
@@ -562,7 +649,7 @@
 
             <div class="week-column-body">
               {#if day.events.length === 0}
-                <div class="week-empty">No sessions</div>
+                <div class="week-empty">No activity</div>
               {:else}
                 {#each day.events as event (event.id)}
                   {@const palette = getCourseColor(event.course.id)}
@@ -600,12 +687,12 @@
       {#if agendaGroups.length === 0}
         <div class="empty-state">
           <CalendarIcon size={32} class="accent-icon" />
-          <h3>No scheduled sessions found</h3>
+          <h3>No calendar activity found</h3>
           <p>
             {#if role === 'student'}
-              Live lessons and deadlines for your enrolled courses will appear here automatically.
+              Completed courses, lessons, exercises, live sessions, and certificate deadlines for your enrolled courses will appear here.
             {:else}
-              Schedule a live lesson date on any active course to see it on the academy calendar.
+              Created courses, lessons, exercises, and scheduled live sessions across your academy will appear here.
             {/if}
           </p>
         </div>
@@ -616,7 +703,7 @@
               <div class="agenda-date-header">
                 <span class="agenda-date-title">{formatFullDate(group.date)}</span>
                 <span class="agenda-date-count">
-                  {group.items.length} session{group.items.length === 1 ? '' : 's'}
+                  {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
                 </span>
               </div>
 
@@ -624,10 +711,14 @@
                 {#each group.items as event (event.id)}
                   {@const palette = getCourseColor(event.course.id)}
                   {@const status = getEventTimingStatus(event)}
+                  {@const hasRelated = Boolean(event.relatedItems && event.relatedItems.length > 0)}
+                  {@const isExpanded = expandedEventIds.has(event.id)}
                   <div class="agenda-row">
                     <div class="agenda-time-col">
                       <span class="primary-time">{formatEventTime(event.startsAt)}</span>
-                      <span class="duration-text">{event.durationMinutes} min</span>
+                      {#if event.durationMinutes > 0}
+                        <span class="duration-text">{event.durationMinutes} min</span>
+                      {/if}
                     </div>
 
                     <div class="agenda-content-col">
@@ -639,12 +730,14 @@
                         >
                           {event.course.title}
                         </span>
-                        <span class="status-badge {status}">
-                          {status === 'live'
-                            ? 'Live Now'
-                            : status === 'upcoming'
-                              ? formatRelativeTime(event.startsAt)
-                              : 'Completed'}
+                        <span class="status-badge {event.type === 'live_session' ? status : 'upcoming'}">
+                          {event.type === 'live_session'
+                            ? status === 'live'
+                              ? 'Live Now'
+                              : status === 'upcoming'
+                                ? formatRelativeTime(event.startsAt)
+                                : 'Completed'
+                            : getEventTypeLabel(event)}
                         </span>
                       </div>
 
@@ -674,6 +767,36 @@
                           </span>
                         {/if}
                       </div>
+
+                      {#if hasRelated && event.relatedItems}
+                        <div class="related-dropdown" class:open={isExpanded}>
+                          <button
+                            type="button"
+                            class="related-dropdown-trigger"
+                            aria-expanded={isExpanded}
+                            onclick={() => toggleEventExpanded(event.id)}
+                          >
+                            <span>
+                              {isExpanded
+                                ? `Hide ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`
+                                : `Show ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`}
+                            </span>
+                            <span class="trigger-chevron" class:rotated={isExpanded}>
+                              <ChevronDownIcon size={14} />
+                            </span>
+                          </button>
+                          {#if isExpanded}
+                            <ul class="related-items-list">
+                              {#each event.relatedItems as item (item.kind + ':' + item.id)}
+                                <li class="related-item-row">
+                                  <span class="related-kind-pill {item.kind}">{item.kind}</span>
+                                  <span class="related-item-title">{item.title}</span>
+                                </li>
+                              {/each}
+                            </ul>
+                          {/if}
+                        </div>
+                      {/if}
                     </div>
 
                     <div class="agenda-actions-col">
@@ -744,12 +867,14 @@
             >
               {selectedEvent.course.title}
             </span>
-            <span class="status-badge {status}">
-              {status === 'live'
-                ? 'Live Now'
-                : status === 'upcoming'
-                  ? formatRelativeTime(selectedEvent.startsAt)
-                  : 'Completed'}
+            <span class="status-badge {selectedEvent.type === 'live_session' ? status : 'upcoming'}">
+              {selectedEvent.type === 'live_session'
+                ? status === 'live'
+                  ? 'Live Now'
+                  : status === 'upcoming'
+                    ? formatRelativeTime(selectedEvent.startsAt)
+                    : 'Completed'
+                : getEventTypeLabel(selectedEvent)}
             </span>
           </div>
           <button
@@ -772,7 +897,10 @@
           <div class="detail-item">
             <span class="detail-label">Time ({localTimezone})</span>
             <span class="detail-value">
-              {formatEventTimeRange(selectedEvent.startsAt, selectedEvent.endsAt)} ({selectedEvent.durationMinutes} mins)
+              {formatEventTimeRange(selectedEvent.startsAt, selectedEvent.endsAt)}
+              {#if selectedEvent.durationMinutes > 0}
+                ({selectedEvent.durationMinutes} mins)
+              {/if}
             </span>
           </div>
           {#if selectedEvent.instructor}
@@ -788,6 +916,22 @@
             </div>
           {/if}
         </div>
+
+        {#if selectedEvent.relatedItems && selectedEvent.relatedItems.length > 0}
+          <div class="modal-related-section">
+            <span class="detail-label">
+              Lessons & Exercises Created ({selectedEvent.relatedItems.length})
+            </span>
+            <ul class="related-items-list modal">
+              {#each selectedEvent.relatedItems as item (item.kind + ':' + item.id)}
+                <li class="related-item-row">
+                  <span class="related-kind-pill {item.kind}">{item.kind}</span>
+                  <span class="related-item-title">{item.title}</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
 
         <div class="modal-footer">
           {#if selectedEvent.lesson?.callUrl}
@@ -1609,12 +1753,6 @@
     cursor: pointer;
   }
 
-  .agenda-card.compact h5 {
-    margin: 0;
-    font-size: 0.82rem;
-    font-weight: 600;
-  }
-
   .agenda-card-top {
     display: flex;
     align-items: center;
@@ -1723,6 +1861,111 @@
     justify-content: flex-end;
     gap: 0.5rem;
     flex-wrap: wrap;
+  }
+
+  .related-dropdown {
+    margin-top: 0.4rem;
+    width: 100%;
+    border: 1px solid var(--cio-border, #e2e8f0);
+    border-radius: 0.5rem;
+    background: var(--cio-surface, #ffffff);
+    overflow: hidden;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .related-dropdown:hover,
+  .related-dropdown.open {
+    border-color: #cbd5e1;
+  }
+
+  .related-dropdown-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background: var(--cio-surface-muted, #f8fafc);
+    border: 0;
+    padding: 0.42rem 0.65rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--cio-foreground, #0f172a);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+
+  .related-dropdown-trigger:hover {
+    background: #f1f5f9;
+  }
+
+  .trigger-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cio-foreground-muted, #64748b);
+    transition: transform 0.18s ease;
+    flex-shrink: 0;
+  }
+
+  .trigger-chevron.rotated {
+    transform: rotate(180deg);
+  }
+
+  .related-items-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.45rem 0.65rem;
+    background: var(--cio-surface, #ffffff);
+    border-top: 1px solid var(--cio-border, #e2e8f0);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .related-items-list.modal {
+    border: 1px solid var(--cio-border, #e2e8f0);
+    border-radius: 0.5rem;
+    background: var(--cio-surface-muted, #f8fafc);
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .related-item-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.76rem;
+    color: var(--cio-foreground, #0f172a);
+  }
+
+  .related-kind-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.1rem 0.38rem;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
+    flex-shrink: 0;
+  }
+
+  .related-kind-pill.exercise {
+    background: rgba(124, 58, 237, 0.12);
+    color: #6d28d9;
+  }
+
+  .related-item-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .modal-related-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
   }
 
   :global(.spin) {
