@@ -172,23 +172,39 @@
     selectedDayKey ? monthGridCells.find((cell) => cell.dateKey === selectedDayKey) ?? null : null
   );
 
+  async function listCourses() {
+    const items: PluginCourseRecord[] = [];
+    let cursor: string | undefined;
+    let role: PluginListResponse<PluginCourseRecord>['role'] = 'student';
+
+    do {
+      const response = await client.action<PluginListResponse<PluginCourseRecord>, { cursor?: string }>(
+        'courses:list',
+        cursor ? { cursor } : {}
+      );
+      role = response.role;
+      items.push(...response.items);
+      cursor = response.nextCursor ?? undefined;
+    } while (cursor);
+
+    return { role, items };
+  }
+
   async function loadSchedule() {
     loading = true;
     error = null;
 
     try {
       const [coursesResponse, lessonsResponse, exercisesResponse] = await Promise.all([
-        client.action<PluginListResponse<PluginCourseRecord>>('courses:list'),
+        listCourses(),
         client.action<PluginListResponse<PluginLessonRecord>, { courseId?: string }>(
           'lessons:list',
           lockedCourseId ? { courseId: lockedCourseId } : {}
         ),
-        client
-          .action<PluginListResponse<PluginExerciseRecord>, { courseId?: string }>(
-            'exercises:list',
-            lockedCourseId ? { courseId: lockedCourseId } : {}
-          )
-          .catch(() => ({ role: 'student' as const, items: [] as PluginExerciseRecord[] }))
+        client.action<PluginListResponse<PluginExerciseRecord>, { courseId?: string }>(
+          'exercises:list',
+          lockedCourseId ? { courseId: lockedCourseId } : {}
+        )
       ]);
 
       const scopedCourses = lockedCourseId

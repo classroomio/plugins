@@ -7,13 +7,32 @@
   let config = $state<AnnouncementConfig>({ ...DEFAULT_CONFIG });
   let ready = $state(false);
   let dismissed = $state(false);
+  let latestCourse = $state<{ id: string; title: string; slug: string | null } | null>(null);
   let bannerEl = $state<HTMLElement | null>(null);
   let resizeObserver: ResizeObserver | null = null;
 
-  const message = $derived(config.message);
-  const linkText = $derived(config.linkText);
-  const linkUrl = $derived(config.linkUrl);
-  const dismissalKey = $derived(`dismissed-${config.revision}`);
+  const message = $derived(
+    config.mode === 'custom'
+      ? config.message
+      : latestCourse
+        ? `New course published: “${latestCourse.title}” is now open for enrollment.`
+        : DEFAULT_CONFIG.message
+  );
+  const linkText = $derived(
+    config.mode === 'custom' ? config.linkText : latestCourse?.slug ? 'Start learning' : DEFAULT_CONFIG.linkText
+  );
+  const linkUrl = $derived(
+    config.mode === 'custom'
+      ? config.linkUrl
+      : latestCourse?.slug
+        ? `/course/${latestCourse.slug}`
+        : DEFAULT_CONFIG.linkUrl
+  );
+  const dismissalKey = $derived(
+    config.mode === 'dynamic'
+      ? `dismissed-${config.revision}-${latestCourse?.id ?? 'none'}`
+      : `dismissed-${config.revision}`
+  );
 
   async function reportHeight() {
     await tick();
@@ -23,13 +42,10 @@
 
   async function dismiss() {
     dismissed = true;
+    void reportHeight();
     try {
       await client.storage.set(dismissalKey, { dismissed: true }, 'announcement', 'user');
-    } catch {
-      // Dismiss immediately even if the preference cannot be persisted.
-    } finally {
-      await reportHeight();
-    }
+    } catch {}
   }
 
   async function openLink() {
@@ -45,6 +61,17 @@
         if (disposed) return;
 
         config = normalizeConfig(storedConfig);
+        if (config.mode === 'dynamic') {
+          try {
+            const response = await client.action<{
+              items: { id: string; title: string; slug: string | null }[];
+            }, { limit: number; publishedOnly: boolean }>('courses:list', { limit: 1, publishedOnly: true });
+            latestCourse = response.items[0] ?? null;
+          } catch {
+            latestCourse = null;
+          }
+        }
+
         const storedDismissal = await client.storage.get<{ dismissed: boolean }>(dismissalKey, 'announcement', 'user');
         dismissed = Boolean(storedDismissal?.dismissed);
       } catch {
