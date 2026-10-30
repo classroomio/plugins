@@ -35,6 +35,15 @@
         "icon": {
           "resource": "assets/icon.svg"
         }
+      },
+      {
+        "id": "course-calendar-lms-navigation",
+        "title": "Course Calendar",
+        "location": "lms.navigation",
+        "page": "course-calendar",
+        "icon": {
+          "resource": "assets/icon.svg"
+        }
       }
     ],
     "pages": [
