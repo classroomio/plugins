@@ -64,6 +64,7 @@ export interface PluginExerciseRecord {
 export interface PluginListResponse<TItem> {
   role: 'admin' | 'tutor' | 'student';
   items: TItem[];
+  nextCursor?: string | null;
 }
 
 export type CalendarEventType =
