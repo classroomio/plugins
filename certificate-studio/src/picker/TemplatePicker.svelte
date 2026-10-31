@@ -39,6 +39,9 @@
   });
 
   onMount(async () => {
+    let selectedTemplateId: string | undefined;
+    let selectedTemplateName: string | undefined;
+
     try {
       const currentTheme = await client.theme.get();
       if (currentTheme?.colorScheme) {
@@ -47,7 +50,15 @@
     } catch {}
 
     try {
+      const currentContext = await client.context.get();
+      selectedTemplateId = currentContext.surface?.resource?.selectedTemplateId;
+      selectedTemplateName = currentContext.surface?.resource?.selectedTemplateName;
+    } catch {}
+
+    try {
       templates = await api.listTemplates();
+      appliedId =
+        selectedTemplateId ?? templates.find((template) => template.name === selectedTemplateName)?.id ?? null;
     } catch (err: unknown) {
       errorMessage = err instanceof Error ? err.message : 'Failed to load templates';
     } finally {
@@ -75,6 +86,7 @@
       await client.action('apply', {
         schema: 'classroomio.certificate-document',
         version: 1,
+        id: template.id,
         document: template.design,
         name: template.name
       });
