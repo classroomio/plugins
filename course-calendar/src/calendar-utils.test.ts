@@ -74,7 +74,7 @@ describe('calendar-utils', () => {
     expect(first).toEqual(second);
   });
 
-  it('groups same-day created lessons/exercises under course_created for admins and emits separate events for later days', () => {
+  it('builds only live classes, exercise due dates, and course deadlines', () => {
     const courses: PluginCourseRecord[] = [
       {
         id: 'course-1',
@@ -136,21 +136,23 @@ describe('calendar-utils', () => {
         title: 'Quiz 1',
         description: null,
         order: 1,
+        dueBy: '2026-10-25T17:00:00.000Z',
         createdAt: '2026-10-01T10:10:00.000Z',
         updatedAt: '2026-10-01T10:10:00.000Z'
       }
     ];
 
-    const derived = buildCalendarEvents(courses, lessons, exercises, 'admin');
-    const courseCreated = derived.find((event) => event.type === 'course_created');
-    expect(courseCreated).toBeDefined();
-    expect(courseCreated?.relatedItems).toHaveLength(2);
-
-    const laterLessonCreated = derived.find((event) => event.type === 'lesson_created');
-    expect(laterLessonCreated?.title).toBe('Raft Deep Dive');
+    const derived = buildCalendarEvents(courses, lessons, exercises);
+    expect(derived.map((event) => event.type)).toEqual([
+      'live_session',
+      'exercise_due',
+      'certificate_deadline'
+    ]);
+    expect(derived.some((event) => event.startsAt === courses[0].createdAt)).toBe(false);
+    expect(derived.some((event) => event.startsAt === lessons[1].createdAt)).toBe(false);
   });
 
-  it('tracks completed courses, lessons, and exercises for students', () => {
+  it('does not turn creation or completion timestamps into calendar events', () => {
     const courses: PluginCourseRecord[] = [
       {
         id: 'course-1',
@@ -205,11 +207,7 @@ describe('calendar-utils', () => {
       }
     ];
 
-    const derived = buildCalendarEvents(courses, lessons, exercises, 'student');
-    expect(derived.map((e) => e.type)).toEqual([
-      'lesson_completed',
-      'exercise_completed',
-      'course_completed'
-    ]);
+    const derived = buildCalendarEvents(courses, lessons, exercises);
+    expect(derived).toEqual([]);
   });
 });

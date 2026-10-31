@@ -1,10 +1,4 @@
-import type {
-  CalendarEvent,
-  CalendarRelatedItem,
-  PluginCourseRecord,
-  PluginExerciseRecord,
-  PluginLessonRecord
-} from './types';
+import type { CalendarEvent, PluginCourseRecord, PluginExerciseRecord, PluginLessonRecord } from './types';
 
 export interface CalendarDayCell {
   date: Date;
@@ -21,12 +15,12 @@ const DEFAULT_LESSON_DURATION_MINUTES = 60;
 
 export function getEventTypeLabel(event: CalendarEvent): string {
   switch (event.type) {
-    case 'course_created': {
-      const count = event.relatedItems?.length ?? 0;
-      return count > 0
-        ? `Course Created (+${count} item${count === 1 ? '' : 's'})`
-        : 'Course Created';
-    }
+    case 'exercise_due':
+      return 'Exercise Due';
+    case 'certificate_deadline':
+      return 'Course Deadline';
+    case 'course_created':
+      return 'Course Created';
     case 'lesson_created':
       return 'Lesson Created';
     case 'exercise_created':
@@ -37,8 +31,6 @@ export function getEventTypeLabel(event: CalendarEvent): string {
       return 'Lesson Completed';
     case 'exercise_completed':
       return 'Exercise Completed';
-    case 'certificate_deadline':
-      return 'Certificate Deadline';
     case 'compliance_due':
       return 'Compliance Due';
     case 'live_session':
@@ -50,8 +42,7 @@ export function getEventTypeLabel(event: CalendarEvent): string {
 export function buildCalendarEvents(
   courses: PluginCourseRecord[],
   lessons: PluginLessonRecord[],
-  exercises: PluginExerciseRecord[] = [],
-  role: 'admin' | 'tutor' | 'student' = 'admin'
+  exercises: PluginExerciseRecord[] = []
 ): CalendarEvent[] {
   const courseById = new Map<string, PluginCourseRecord>();
   for (const courseItem of courses) {
@@ -117,8 +108,8 @@ export function buildCalendarEvents(
     if (Number.isNaN(deadlineDate.getTime())) continue;
 
     events.push({
-      id: `certificate-deadline:${courseItem.id}`,
-      title: `${courseItem.title} — Certificate Deadline`,
+      id: `course-deadline:${courseItem.id}`,
+      title: `${courseItem.title} — Course Deadline`,
       type: 'certificate_deadline',
       startsAt: deadlineDate.toISOString(),
       endsAt: deadlineDate.toISOString(),
@@ -141,243 +132,42 @@ export function buildCalendarEvents(
     });
   }
 
-  if (role === 'admin' || role === 'tutor') {
-    const lessonsByCourse = new Map<string, PluginLessonRecord[]>();
-    for (const lesson of lessons) {
-      const list = lessonsByCourse.get(lesson.courseId) ?? [];
-      list.push(lesson);
-      lessonsByCourse.set(lesson.courseId, list);
-    }
+  for (const exercise of exercises) {
+    if (!exercise.dueBy) continue;
 
-    const exercisesByCourse = new Map<string, PluginExerciseRecord[]>();
-    for (const ex of exercises) {
-      const list = exercisesByCourse.get(ex.courseId) ?? [];
-      list.push(ex);
-      exercisesByCourse.set(ex.courseId, list);
-    }
+    const courseItem = courseById.get(exercise.courseId);
+    if (!courseItem) continue;
 
-    for (const courseItem of courses) {
-      const courseCreatedDate = new Date(courseItem.createdAt);
-      const hasValidCourseDate = !Number.isNaN(courseCreatedDate.getTime());
-      const courseDayKey = hasValidCourseDate ? toLocalDateKey(courseCreatedDate) : null;
+    const dueDate = new Date(exercise.dueBy);
+    if (Number.isNaN(dueDate.getTime())) continue;
 
-      const courseLessons = lessonsByCourse.get(courseItem.id) ?? [];
-      const courseExercises = exercisesByCourse.get(courseItem.id) ?? [];
-
-      const sameDayRelated: CalendarRelatedItem[] = [];
-
-      for (const lesson of courseLessons) {
-        const lessonCreatedDate = new Date(lesson.createdAt);
-        if (Number.isNaN(lessonCreatedDate.getTime())) continue;
-
-        if (courseDayKey && toLocalDateKey(lessonCreatedDate) === courseDayKey) {
-          sameDayRelated.push({
-            id: lesson.id,
-            kind: 'lesson',
-            title: lesson.title,
-            createdAt: lessonCreatedDate.toISOString()
-          });
-        } else {
-          const instructor =
-            lesson.instructor ??
-            (courseItem.instructor
-              ? {
-                  id: `course-instructor:${courseItem.id}`,
-                  name: courseItem.instructor.name,
-                  avatarUrl: courseItem.instructor.avatarUrl
-                }
-              : null);
-
-          events.push({
-            id: `lesson-created:${lesson.id}`,
-            title: lesson.title,
-            type: 'lesson_created',
-            startsAt: lessonCreatedDate.toISOString(),
-            endsAt: lessonCreatedDate.toISOString(),
-            durationMinutes: 0,
-            timezone: courseItem.sessionTimezone ?? null,
-            course: {
-              id: courseItem.id,
-              title: courseItem.title,
-              slug: courseItem.slug,
-              type: courseItem.type
-            },
-            lesson: {
-              id: lesson.id,
-              title: lesson.title,
-              callUrl: lesson.callUrl,
-              recordingUrl: lesson.recordingUrl
-            },
-            instructor
-          });
-        }
-      }
-
-      for (const ex of courseExercises) {
-        const exCreatedDate = new Date(ex.createdAt);
-        if (Number.isNaN(exCreatedDate.getTime())) continue;
-
-        if (courseDayKey && toLocalDateKey(exCreatedDate) === courseDayKey) {
-          sameDayRelated.push({
-            id: ex.id,
-            kind: 'exercise',
-            title: ex.title,
-            createdAt: exCreatedDate.toISOString()
-          });
-        } else {
-          events.push({
-            id: `exercise-created:${ex.id}`,
-            title: ex.title,
-            type: 'exercise_created',
-            startsAt: exCreatedDate.toISOString(),
-            endsAt: exCreatedDate.toISOString(),
-            durationMinutes: 0,
-            timezone: courseItem.sessionTimezone ?? null,
-            course: {
-              id: courseItem.id,
-              title: courseItem.title,
-              slug: courseItem.slug,
-              type: courseItem.type
-            },
-            lesson: null,
-            exercise: {
-              id: ex.id,
-              title: ex.title
-            },
-            instructor: courseItem.instructor
-              ? {
-                  id: `course-instructor:${courseItem.id}`,
-                  name: courseItem.instructor.name,
-                  avatarUrl: courseItem.instructor.avatarUrl
-                }
-              : null
-          });
-        }
-      }
-
-      if (hasValidCourseDate) {
-        events.push({
-          id: `course-created:${courseItem.id}`,
-          title: courseItem.title,
-          type: 'course_created',
-          startsAt: courseCreatedDate.toISOString(),
-          endsAt: courseCreatedDate.toISOString(),
-          durationMinutes: 0,
-          timezone: courseItem.sessionTimezone ?? null,
-          course: {
-            id: courseItem.id,
-            title: courseItem.title,
-            slug: courseItem.slug,
-            type: courseItem.type
-          },
-          lesson: null,
-          relatedItems: sameDayRelated,
-          instructor: courseItem.instructor
-            ? {
-                id: `course-instructor:${courseItem.id}`,
-                name: courseItem.instructor.name,
-                avatarUrl: courseItem.instructor.avatarUrl
-              }
-            : null
-        });
-      }
-    }
-  } else {
-    for (const courseItem of courses) {
-      if (!courseItem.completedAt) continue;
-
-      const completedDate = new Date(courseItem.completedAt);
-      if (Number.isNaN(completedDate.getTime())) continue;
-
-      events.push({
-        id: `course-completed:${courseItem.id}`,
+    events.push({
+      id: `exercise-due:${exercise.id}`,
+      title: exercise.title,
+      type: 'exercise_due',
+      startsAt: dueDate.toISOString(),
+      endsAt: dueDate.toISOString(),
+      durationMinutes: 0,
+      timezone: courseItem.sessionTimezone ?? null,
+      course: {
+        id: courseItem.id,
         title: courseItem.title,
-        type: 'course_completed',
-        startsAt: completedDate.toISOString(),
-        endsAt: completedDate.toISOString(),
-        durationMinutes: 0,
-        timezone: courseItem.sessionTimezone ?? null,
-        course: {
-          id: courseItem.id,
-          title: courseItem.title,
-          slug: courseItem.slug,
-          type: courseItem.type
-        },
-        lesson: null,
-        instructor: courseItem.instructor
-          ? {
-              id: `course-instructor:${courseItem.id}`,
-              name: courseItem.instructor.name,
-              avatarUrl: courseItem.instructor.avatarUrl
-            }
-          : null
-      });
-    }
-
-    for (const lesson of lessons) {
-      if (!lesson.completedAt) continue;
-
-      const courseItem = courseById.get(lesson.courseId);
-      if (!courseItem) continue;
-
-      const completedDate = new Date(lesson.completedAt);
-      if (Number.isNaN(completedDate.getTime())) continue;
-
-      events.push({
-        id: `lesson-completed:${lesson.id}`,
-        title: lesson.title,
-        type: 'lesson_completed',
-        startsAt: completedDate.toISOString(),
-        endsAt: completedDate.toISOString(),
-        durationMinutes: 0,
-        timezone: courseItem.sessionTimezone ?? null,
-        course: {
-          id: courseItem.id,
-          title: courseItem.title,
-          slug: courseItem.slug,
-          type: courseItem.type
-        },
-        lesson: {
-          id: lesson.id,
-          title: lesson.title,
-          callUrl: lesson.callUrl,
-          recordingUrl: lesson.recordingUrl
-        },
-        instructor: lesson.instructor
-      });
-    }
-
-    for (const ex of exercises) {
-      if (!ex.completedAt) continue;
-
-      const courseItem = courseById.get(ex.courseId);
-      if (!courseItem) continue;
-
-      const completedDate = new Date(ex.completedAt);
-      if (Number.isNaN(completedDate.getTime())) continue;
-
-      events.push({
-        id: `exercise-completed:${ex.id}`,
-        title: ex.title,
-        type: 'exercise_completed',
-        startsAt: completedDate.toISOString(),
-        endsAt: completedDate.toISOString(),
-        durationMinutes: 0,
-        timezone: courseItem.sessionTimezone ?? null,
-        course: {
-          id: courseItem.id,
-          title: courseItem.title,
-          slug: courseItem.slug,
-          type: courseItem.type
-        },
-        lesson: null,
-        exercise: {
-          id: ex.id,
-          title: ex.title
-        },
-        instructor: null
-      });
-    }
+        slug: courseItem.slug,
+        type: courseItem.type
+      },
+      lesson: null,
+      exercise: {
+        id: exercise.id,
+        title: exercise.title
+      },
+      instructor: courseItem.instructor
+        ? {
+            id: `course-instructor:${courseItem.id}`,
+            name: courseItem.instructor.name,
+            avatarUrl: courseItem.instructor.avatarUrl
+          }
+        : null
+    });
   }
 
   events.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());

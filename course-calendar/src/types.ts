@@ -69,6 +69,7 @@ export interface PluginListResponse<TItem> {
 
 export type CalendarEventType =
   | 'live_session'
+  | 'exercise_due'
   | 'certificate_deadline'
   | 'compliance_due'
   | 'course_created'

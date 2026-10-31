@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import { createClassroomIOClient, type PluginContext } from '@classroomio/plugin-sdk';
   import type {
@@ -15,6 +15,7 @@
   import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
   import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
   import ClockIcon from '@lucide/svelte/icons/clock';
+  import EllipsisVerticalIcon from '@lucide/svelte/icons/ellipsis-vertical';
   import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
   import FilterIcon from '@lucide/svelte/icons/filter';
   import GraduationCapIcon from '@lucide/svelte/icons/graduation-cap';
@@ -45,6 +46,7 @@
 
   const client = createClassroomIOClient({ timeoutMs: 10000 });
   const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const compactWeekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
   let context = $state<PluginContext | null>(null);
@@ -63,7 +65,19 @@
   let currentAnchor = $state(new Date());
   let selectedEvent = $state<CalendarEvent | null>(null);
   let selectedDayKey = $state<string | null>(null);
+  let sidebarMenuOpen = $state(false);
+  let sidebarWidgetEl = $state<HTMLElement | null>(null);
+  let sidebarResizeObserver: ResizeObserver | null = null;
   const expandedEventIds = new SvelteSet<string>();
+
+  async function reportSidebarHeight() {
+    if (!isSidebarSurface) return;
+    await tick();
+    const height = sidebarWidgetEl ? Math.ceil(sidebarWidgetEl.getBoundingClientRect().height) : 320;
+    try {
+      await client.ui.resize(Math.max(220, height));
+    } catch {}
+  }
 
   function toggleEventExpanded(eventId: string) {
     if (expandedEventIds.has(eventId)) {
@@ -71,6 +85,7 @@
     } else {
       expandedEventIds.add(eventId);
     }
+    void reportSidebarHeight();
   }
 
   const isSidebarSurface = $derived(context?.surface?.target === 'course.sidebar');
@@ -172,6 +187,40 @@
     selectedDayKey ? monthGridCells.find((cell) => cell.dateKey === selectedDayKey) ?? null : null
   );
 
+  const sidebarDisplayEvents = $derived.by(() => {
+    if (selectedDayCell) {
+      return selectedDayCell.events;
+    }
+
+    return [...filteredEvents]
+      .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime())
+      .slice(0, 4);
+  });
+
+  function formatShortDayBadge(iso: string): { day: string; month: string } {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      return { day: '--', month: '' };
+    }
+    return {
+      day: String(date.getDate()).padStart(2, '0'),
+      month: date.toLocaleDateString([], { month: 'short' })
+    };
+  }
+
+  async function openFullCalendar() {
+    sidebarMenuOpen = false;
+    const targetPath = role === 'student' ? '/lms/plugins/course-calendar' : '/org/plugins/course-calendar';
+    try {
+      await client.navigation.open(targetPath);
+    } catch {
+      await client.ui.toast({
+        message: 'Unable to open full calendar view.',
+        variant: 'warning'
+      });
+    }
+  }
+
   async function listCourses() {
     const items: PluginCourseRecord[] = [];
     let cursor: string | undefined;
@@ -211,12 +260,7 @@
         ? coursesResponse.items.filter((courseItem) => courseItem.id === lockedCourseId)
         : coursesResponse.items;
 
-      const derivedEvents = buildCalendarEvents(
-        scopedCourses,
-        lessonsResponse.items,
-        exercisesResponse.items,
-        coursesResponse.role
-      );
+      const derivedEvents = buildCalendarEvents(scopedCourses, lessonsResponse.items, exercisesResponse.items);
 
       role = coursesResponse.role;
       courses = scopedCourses.map((courseItem) => ({
@@ -230,10 +274,24 @@
       if (lockedCourseId) {
         selectedCourseId = lockedCourseId;
       }
+
+      if (isSidebarSurface && derivedEvents.length > 0) {
+        const hasCurrentMonthEvent = derivedEvents.some((ev) => {
+          const d = new Date(ev.startsAt);
+          return d.getFullYear() === currentAnchor.getFullYear() && d.getMonth() === currentAnchor.getMonth();
+        });
+        if (!hasCurrentMonthEvent) {
+          const latestEventDate = new Date(derivedEvents[derivedEvents.length - 1].startsAt);
+          if (!Number.isNaN(latestEventDate.getTime())) {
+            currentAnchor = new Date(latestEventDate.getFullYear(), latestEventDate.getMonth(), 1);
+          }
+        }
+      }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Unable to load course schedule.';
     } finally {
       loading = false;
+      void reportSidebarHeight();
     }
   }
 
@@ -291,18 +349,266 @@
       const ctx = await client.context.get();
       context = ctx;
       if (ctx.surface?.target === 'course.sidebar') {
-        viewMode = 'agenda';
-        await client.ui.resize(480);
+        viewMode = 'month';
+        await reportSidebarHeight();
       }
       await loadSchedule();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to initialize calendar plugin.';
       loading = false;
+      void reportSidebarHeight();
     }
+  });
+
+  $effect(() => {
+    if (!isSidebarSurface || !sidebarWidgetEl || typeof ResizeObserver === 'undefined') return;
+
+    sidebarResizeObserver?.disconnect();
+    sidebarResizeObserver = new ResizeObserver(() => {
+      void reportSidebarHeight();
+    });
+    sidebarResizeObserver.observe(sidebarWidgetEl);
+
+    return () => {
+      sidebarResizeObserver?.disconnect();
+      sidebarResizeObserver = null;
+    };
+  });
+
+  onDestroy(() => {
+    sidebarResizeObserver?.disconnect();
   });
 </script>
 
-<div class="calendar-shell" class:compact={isSidebarSurface}>
+{#if isSidebarSurface}
+  <div class="sidebar-widget" bind:this={sidebarWidgetEl}>
+    <div class="sw-header">
+      <div class="sw-title-group">
+        <CalendarIcon size={14} class="accent-icon" />
+        <h2 class="sw-heading">Course Schedule</h2>
+      </div>
+
+      <div class="sw-menu-wrap">
+        <button
+          type="button"
+          class="sw-icon-btn"
+          aria-label="Schedule options"
+          aria-expanded={sidebarMenuOpen}
+          onclick={() => {
+            sidebarMenuOpen = !sidebarMenuOpen;
+            void reportSidebarHeight();
+          }}
+        >
+          <EllipsisVerticalIcon size={14} />
+        </button>
+
+        {#if sidebarMenuOpen}
+          <div class="sw-dropdown-menu" role="menu">
+            <button type="button" class="sw-menu-item" role="menuitem" onclick={openFullCalendar}>
+              <ExternalLinkIcon size={12} />
+              <span>Open Full Calendar</span>
+            </button>
+            <button
+              type="button"
+              class="sw-menu-item"
+              role="menuitem"
+              onclick={() => {
+                sidebarMenuOpen = false;
+                void loadSchedule();
+              }}
+            >
+              <RefreshCwIcon size={12} class={loading ? 'spin' : ''} />
+              <span>Refresh Schedule</span>
+            </button>
+            <button
+              type="button"
+              class="sw-menu-item"
+              role="menuitem"
+              onclick={() => {
+                sidebarMenuOpen = false;
+                jumpToToday();
+              }}
+            >
+              <CalendarIcon size={12} />
+              <span>Jump to Today</span>
+            </button>
+            <div class="sw-menu-tz">
+              <GlobeIcon size={11} />
+              <span>{localTimezone}</span>
+            </div>
+          </div>
+        {/if}
+      </div>
+    </div>
+
+    <div class="sw-month-bar">
+      <span class="sw-month-label">
+        {currentAnchor.toLocaleDateString([], { month: 'long', year: 'numeric' })}
+      </span>
+      <div class="sw-month-nav">
+        <button
+          type="button"
+          class="sw-icon-btn sm"
+          onclick={() => {
+            currentAnchor = new Date(currentYear, currentMonth - 1, 1);
+            void reportSidebarHeight();
+          }}
+          aria-label="Previous month"
+        >
+          <ChevronLeftIcon size={13} />
+        </button>
+        <button
+          type="button"
+          class="sw-icon-btn sm"
+          onclick={() => {
+            currentAnchor = new Date(currentYear, currentMonth + 1, 1);
+            void reportSidebarHeight();
+          }}
+          aria-label="Next month"
+        >
+          <ChevronRightIcon size={13} />
+        </button>
+      </div>
+    </div>
+
+    <div class="sw-mini-calendar">
+      <div class="sw-weekdays">
+        {#each compactWeekdayLabels as label (label)}
+          <span>{label}</span>
+        {/each}
+      </div>
+
+      <div class="sw-days-grid">
+        {#each monthGridCells as cell (cell.dateKey)}
+          {@const hasEvents = cell.events.length > 0}
+          <button
+            type="button"
+            class="sw-day-btn"
+            class:outside={!cell.isCurrentMonth}
+            class:today={cell.isToday}
+            class:selected={selectedDayKey === cell.dateKey}
+            onclick={() => {
+              selectedDayKey = selectedDayKey === cell.dateKey ? null : cell.dateKey;
+              void reportSidebarHeight();
+            }}
+          >
+            <span class="sw-day-num">{cell.dayNumber}</span>
+            {#if hasEvents}
+              <span class="sw-day-dot"></span>
+            {/if}
+          </button>
+        {/each}
+      </div>
+    </div>
+
+    <div class="sw-agenda-section">
+      <div class="sw-section-header">
+        <span>
+          {#if selectedDayCell}
+            {selectedDayCell.date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ({selectedDayCell.events.length})
+          {:else}
+            SCHEDULED EVENTS
+          {/if}
+        </span>
+        {#if selectedDayKey}
+          <button
+            type="button"
+            class="sw-clear-btn"
+            onclick={() => {
+              selectedDayKey = null;
+              void reportSidebarHeight();
+            }}
+          >
+            All
+          </button>
+        {/if}
+      </div>
+
+      {#if loading}
+        <div class="sw-empty">
+          <Loader2Icon size={14} class="spin accent-icon" />
+          <span>Loading...</span>
+        </div>
+      {:else if error}
+        <div class="sw-empty">
+          <span>Unable to load schedule</span>
+        </div>
+      {:else if sidebarDisplayEvents.length === 0}
+        <div class="sw-empty">
+          <span>No scheduled events</span>
+        </div>
+      {:else}
+        <div class="sw-event-list">
+          {#each sidebarDisplayEvents as event (event.id)}
+            {@const badge = formatShortDayBadge(event.startsAt)}
+            {@const hasRelated = Boolean(event.relatedItems && event.relatedItems.length > 0)}
+            {@const isExpanded = expandedEventIds.has(event.id)}
+            <div class="sw-event-card">
+              <button
+                type="button"
+                class="sw-event-row"
+                onclick={() => toggleEventExpanded(event.id)}
+              >
+                <div class="sw-date-badge">
+                  <span class="sw-date-day">{badge.day}</span>
+                  <span class="sw-date-mon">{badge.month}</span>
+                </div>
+                <div class="sw-event-info">
+                  <span class="sw-event-title">
+                    {event.type === 'course_created' ? 'Course Created' : event.title}
+                  </span>
+                  <span class="sw-event-sub">
+                    {#if hasRelated && event.relatedItems}
+                      {event.relatedItems.length} lesson{event.relatedItems.length === 1 ? '' : 's'} & exercise{event.relatedItems.length === 1 ? '' : 's'}
+                    {:else if event.type === 'live_session'}
+                      {formatEventTime(event.startsAt)} • Live session
+                    {:else}
+                      {getEventTypeLabel(event)} • {formatEventTime(event.startsAt)}
+                    {/if}
+                  </span>
+                </div>
+                <span class="sw-row-chevron" class:rotated={isExpanded}>
+                  <ChevronRightIcon size={13} />
+                </span>
+              </button>
+
+              {#if isExpanded}
+                <div class="sw-event-expanded">
+                  {#if hasRelated && event.relatedItems}
+                    <ul class="sw-related-list">
+                      {#each event.relatedItems as item (item.kind + ':' + item.id)}
+                        <li class="sw-related-item">
+                          <span class="sw-kind-dot {item.kind}"></span>
+                          <span class="sw-related-title">{item.title}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  {:else}
+                    <div class="sw-detail-meta">
+                      <span>{event.title}</span>
+                      <span>{formatFullDate(event.startsAt)} • {formatEventTime(event.startsAt)}</span>
+                      {#if event.lesson?.callUrl}
+                        <a
+                          href={event.lesson.callUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="sw-join-link"
+                        >
+                          Join Live Session ↗
+                        </a>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </div>
+{:else}
+<div class="calendar-shell">
   <header class="top-bar">
     <div class="brand-group">
       <div class="brand-icon">
@@ -310,7 +616,7 @@
       </div>
       <div>
         <div class="title-row">
-          <h1>{isSidebarSurface ? 'Course Schedule' : 'Course & Live Calendar'}</h1>
+          <h1>Course & Live Calendar</h1>
           <span class="role-badge" class:staff={role === 'admin' || role === 'tutor'}>
             {#if role === 'admin'}
               <ShieldIcon size={12} />
@@ -348,7 +654,7 @@
       <div class="stat-chip">
         <span class="stat-dot completed"></span>
         <span class="stat-value">{statsSummary.activityCount}</span>
-        <span class="stat-label">{role === 'student' ? 'Completed' : 'Created'}</span>
+        <span class="stat-label">Deadlines</span>
       </div>
     </div>
   </header>
@@ -386,17 +692,9 @@
         <div class="select-wrap">
           <select bind:value={selectedTypeFilter} aria-label="Filter by event type">
             <option value="all">All Event Types</option>
-            {#if role === 'student'}
-              <option value="course_completed">Courses Completed</option>
-              <option value="lesson_completed">Lessons Completed</option>
-              <option value="exercise_completed">Exercises Completed</option>
-            {:else}
-              <option value="course_created">Courses Created</option>
-              <option value="lesson_created">Lessons Created</option>
-              <option value="exercise_created">Exercises Created</option>
-            {/if}
             <option value="live_session">Live Sessions</option>
-            <option value="certificate_deadline">Certificate Deadlines</option>
+            <option value="exercise_due">Exercise Due Dates</option>
+            <option value="certificate_deadline">Course Deadlines</option>
           </select>
         </div>
 
@@ -665,7 +963,7 @@
 
             <div class="week-column-body">
               {#if day.events.length === 0}
-                <div class="week-empty">No activity</div>
+                <div class="week-empty">No scheduled events</div>
               {:else}
                 {#each day.events as event (event.id)}
                   {@const palette = getCourseColor(event.course.id)}
@@ -703,13 +1001,9 @@
       {#if agendaGroups.length === 0}
         <div class="empty-state">
           <CalendarIcon size={32} class="accent-icon" />
-          <h3>No calendar activity found</h3>
+          <h3>No scheduled events found</h3>
           <p>
-            {#if role === 'student'}
-              Completed courses, lessons, exercises, live sessions, and certificate deadlines for your enrolled courses will appear here.
-            {:else}
-              Created courses, lessons, exercises, and scheduled live sessions across your academy will appear here.
-            {/if}
+            Live classes, exercise due dates, and course deadlines will appear here.
           </p>
         </div>
       {:else}
@@ -989,8 +1283,405 @@
     </div>
   {/if}
 </div>
+{/if}
 
 <style>
+  .sidebar-widget {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border: 1px solid var(--cio-border, #e2e8f0);
+    border-radius: 0.625rem;
+    background: var(--cio-surface, #ffffff);
+    color: var(--cio-foreground, #0f172a);
+    overflow: hidden;
+  }
+
+  .sw-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.625rem;
+    border-bottom: 1px solid var(--cio-border, #e2e8f0);
+  }
+
+  .sw-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .sw-heading {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sw-menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .sw-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.35rem;
+    border: 0;
+    background: transparent;
+    color: var(--cio-foreground-muted, #64748b);
+    cursor: pointer;
+  }
+
+  .sw-icon-btn:hover {
+    background: var(--cio-surface-muted, #f1f5f9);
+    color: var(--cio-foreground, #0f172a);
+  }
+
+  .sw-icon-btn.sm {
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 1px solid var(--cio-border, #e2e8f0);
+    background: var(--cio-surface, #ffffff);
+  }
+
+  .sw-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    right: 0;
+    z-index: 30;
+    min-width: 10.5rem;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--cio-border, #e2e8f0);
+    background: var(--cio-surface, #ffffff);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .sw-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.38rem 0.5rem;
+    border: 0;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: var(--cio-foreground, #0f172a);
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .sw-menu-item:hover {
+    background: var(--cio-surface-muted, #f1f5f9);
+  }
+
+  .sw-menu-tz {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.15rem;
+    padding: 0.3rem 0.5rem 0.2rem;
+    border-top: 1px solid var(--cio-border, #e2e8f0);
+    font-size: 0.65rem;
+    color: var(--cio-foreground-muted, #64748b);
+  }
+
+  .sw-month-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.625rem 0.25rem;
+  }
+
+  .sw-month-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--cio-foreground, #0f172a);
+  }
+
+  .sw-month-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .sw-mini-calendar {
+    padding: 0.15rem 0.5rem 0.45rem;
+    border-bottom: 1px solid var(--cio-border, #e2e8f0);
+  }
+
+  .sw-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    margin-bottom: 0.2rem;
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--cio-foreground-muted, #64748b);
+  }
+
+  .sw-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+  }
+
+  .sw-day-btn {
+    position: relative;
+    height: 1.55rem;
+    border: 0;
+    border-radius: 0.3rem;
+    background: transparent;
+    color: var(--cio-foreground, #0f172a);
+    font-size: 0.67rem;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .sw-day-btn:hover {
+    background: var(--cio-surface-muted, #f1f5f9);
+  }
+
+  .sw-day-btn.outside {
+    color: var(--cio-foreground-muted, #94a3b8);
+    opacity: 0.55;
+  }
+
+  .sw-day-btn.today {
+    font-weight: 700;
+    color: var(--cio-accent, #2563eb);
+    background: rgba(37, 99, 235, 0.08);
+  }
+
+  .sw-day-btn.selected {
+    background: var(--cio-accent, #2563eb);
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .sw-day-num {
+    line-height: 1;
+  }
+
+  .sw-day-dot {
+    width: 0.24rem;
+    height: 0.24rem;
+    border-radius: 999px;
+    background: var(--cio-accent, #2563eb);
+    margin-top: 0.1rem;
+  }
+
+  .sw-day-btn.selected .sw-day-dot {
+    background: #ffffff;
+  }
+
+  .sw-agenda-section {
+    padding: 0.45rem 0.5rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .sw-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.125rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--cio-foreground-muted, #64748b);
+  }
+
+  .sw-clear-btn {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font-size: 0.64rem;
+    font-weight: 600;
+    color: var(--cio-accent, #2563eb);
+    cursor: pointer;
+  }
+
+  .sw-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.65rem 0.25rem;
+    font-size: 0.68rem;
+    color: var(--cio-foreground-muted, #64748b);
+  }
+
+  .sw-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .sw-event-card {
+    border: 1px solid var(--cio-border, #e2e8f0);
+    border-radius: 0.4rem;
+    background: var(--cio-surface, #ffffff);
+    overflow: hidden;
+  }
+
+  .sw-event-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.45rem;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .sw-event-row:hover {
+    background: var(--cio-surface-muted, #f8fafc);
+  }
+
+  .sw-date-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    padding: 0.18rem 0.25rem;
+    border-radius: 0.3rem;
+    background: var(--cio-surface-muted, #f1f5f9);
+    flex-shrink: 0;
+  }
+
+  .sw-date-day {
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--cio-foreground, #0f172a);
+  }
+
+  .sw-date-mon {
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    line-height: 1.05;
+    color: var(--cio-foreground-muted, #64748b);
+  }
+
+  .sw-event-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+  }
+
+  .sw-event-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--cio-foreground, #0f172a);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sw-event-sub {
+    font-size: 0.62rem;
+    color: var(--cio-foreground-muted, #64748b);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sw-row-chevron {
+    display: inline-flex;
+    align-items: center;
+    color: var(--cio-foreground-muted, #94a3b8);
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .sw-row-chevron.rotated {
+    transform: rotate(90deg);
+  }
+
+  .sw-event-expanded {
+    padding: 0.35rem 0.5rem;
+    border-top: 1px solid var(--cio-border, #e2e8f0);
+    background: var(--cio-surface-muted, #f8fafc);
+  }
+
+  .sw-related-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    max-height: 7.5rem;
+    overflow-y: auto;
+  }
+
+  .sw-related-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.64rem;
+    color: var(--cio-foreground, #0f172a);
+  }
+
+  .sw-kind-dot {
+    width: 0.32rem;
+    height: 0.32rem;
+    border-radius: 999px;
+    background: #2563eb;
+    flex-shrink: 0;
+  }
+
+  .sw-kind-dot.exercise {
+    background: #7c3aed;
+  }
+
+  .sw-related-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sw-detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.64rem;
+    color: var(--cio-foreground-muted, #64748b);
+  }
+
+  .sw-join-link {
+    font-weight: 600;
+    color: var(--cio-accent, #2563eb);
+    text-decoration: none;
+  }
+
   .calendar-shell {
     display: flex;
     flex-direction: column;
@@ -998,11 +1689,6 @@
     width: 100%;
     background: var(--cio-background, #ffffff);
     color: var(--cio-foreground, #0f172a);
-  }
-
-  .calendar-shell.compact {
-    height: auto;
-    min-height: 440px;
   }
 
   .top-bar {
