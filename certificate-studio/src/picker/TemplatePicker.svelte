@@ -7,6 +7,7 @@
   import { renderCertificatePreviewDocument } from '../kit';
   import { StudioApiClient } from '../shared/api';
   import type { StudioTemplate } from '../shared/types';
+  import { certificateDocumentsMatch } from './template-match';
 
   const client: ClassroomIOClient = createClassroomIOClient();
   const api = new StudioApiClient(client);
@@ -41,6 +42,7 @@
   onMount(async () => {
     let selectedTemplateId: string | undefined;
     let selectedTemplateName: string | undefined;
+    let selectedTemplateDocument: unknown;
 
     try {
       const currentTheme = await client.theme.get();
@@ -53,12 +55,16 @@
       const currentContext = await client.context.get();
       selectedTemplateId = currentContext.surface?.resource?.selectedTemplateId;
       selectedTemplateName = currentContext.surface?.resource?.selectedTemplateName;
+      selectedTemplateDocument = currentContext.surface?.resource?.selectedTemplateDocument;
     } catch {}
 
     try {
       templates = await api.listTemplates();
-      appliedId =
-        selectedTemplateId ?? templates.find((template) => template.name === selectedTemplateName)?.id ?? null;
+      const selectedTemplate =
+        templates.find((template) => template.id === selectedTemplateId) ??
+        templates.find((template) => certificateDocumentsMatch(template.design, selectedTemplateDocument)) ??
+        templates.find((template) => template.name === selectedTemplateName);
+      appliedId = selectedTemplate?.id ?? null;
     } catch (err: unknown) {
       errorMessage = err instanceof Error ? err.message : 'Failed to load templates';
     } finally {

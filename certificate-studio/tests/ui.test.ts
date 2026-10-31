@@ -4,6 +4,7 @@ import path from 'node:path';
 import { StudioApiClient } from '../src/shared/api';
 import type { ClassroomIOClient } from '@classroomio/plugin-sdk';
 import { DEFAULT_CERTIFICATE_DESIGN_V1 } from '../src/kit';
+import { certificateDocumentsMatch } from '../src/picker/template-match';
 
 describe('Certificate Studio UI & Client Tests', () => {
   it('StudioApiClient loads templates via host storage', async () => {
@@ -37,6 +38,22 @@ describe('Certificate Studio UI & Client Tests', () => {
     expect(templates.length).toBe(1);
     expect(templates[0].id).toBe('tmpl-1');
     expect(mockClient.storage.list).toHaveBeenCalledWith('certificate-templates', 'organization');
+  });
+
+  it('matches legacy course documents to studio templates without persisted identity metadata', () => {
+    const storedDocument = {
+      ...DEFAULT_CERTIFICATE_DESIGN_V1,
+      templateSourceId: 'template-1',
+      templateName: 'Certificate One'
+    };
+
+    expect(certificateDocumentsMatch(DEFAULT_CERTIFICATE_DESIGN_V1, storedDocument)).toBe(true);
+    expect(
+      certificateDocumentsMatch(DEFAULT_CERTIFICATE_DESIGN_V1, {
+        ...storedDocument,
+        accentColor: '#000000'
+      })
+    ).toBe(false);
   });
 
   it('Verifies zero private ClassroomIO imports in plugin source', () => {
