@@ -1,0 +1,61 @@
+{
+  "$schema": "https://classroomio.com/schemas/plugin.v1.json",
+  "manifestVersion": 1,
+  "id": "com.classroomio.landing-studio",
+  "name": "Landing Page Studio",
+  "version": "1.0.0",
+  "description": "Design, customize, and publish beautiful landing pages for your academy.",
+  "publisher": "ClassroomIO",
+  "icon": {
+    "resource": "assets/icon.svg"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "classroomio": ">=2.0.0",
+    "pluginApi": "2026-10-08"
+  },
+  "runtime": {
+    "ui": {
+      "entrypoints": {
+        "studio": {
+          "renderMode": "custom",
+          "resource": "dist/studio.html"
+        }
+      }
+    }
+  },
+  "contributes": {
+    "navigation": [
+      {
+        "id": "landing-studio-navigation",
+        "title": "Landing Page Studio",
+        "location": "organization.navigation",
+        "page": "landing-studio",
+        "icon": {
+          "resource": "assets/icon.svg"
+        },
+        "visibility": "organization.admin"
+      }
+    ],
+    "pages": [
+      {
+        "id": "landing-studio",
+        "entrypoint": "studio",
+        "title": "Landing Page Studio"
+      }
+    ]
+  },
+  "permissions": {
+    "required": [
+      "plugin.storage:read",
+      "plugin.storage:write",
+      "course.metadata:read"
+    ]
+  },
+  "dataPolicy": {
+    "storesCustomerData": true,
+    "retentionAfterUninstallDays": 30,
+    "privacyPolicyUrl": "https://classroomio.com/privacy"
+  }
+}
+

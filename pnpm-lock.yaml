@@ -105,6 +105,43 @@ importers:
         specifier: 2.1.8
         version: 2.1.8(@types/node@20.19.0)
 
+  landing-studio:
+    dependencies:
+      '@cio/landing-pages':
+        specifier: link:../../classroomio/packages/landing-pages
+        version: link:../../classroomio/packages/landing-pages
+      '@classroomio/plugin-sdk':
+        specifier: link:../../classroomio/packages/plugin-sdk
+        version: link:../../classroomio/packages/plugin-sdk
+      '@lucide/svelte':
+        specifier: 1.16.0
+        version: 1.16.0(svelte@5.46.1)
+      zod:
+        specifier: 3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: 4.0.0
+        version: 4.0.0(svelte@5.46.1)(vite@5.4.4(@types/node@20.19.0))
+      '@types/node':
+        specifier: 20.19.0
+        version: 20.19.0
+      svelte:
+        specifier: 5.46.1
+        version: 5.46.1
+      svelte-check:
+        specifier: 4.0.0
+        version: 4.0.0(svelte@5.46.1)(typescript@5.5.2)
+      typescript:
+        specifier: 5.5.2
+        version: 5.5.2
+      vite:
+        specifier: 5.4.4
+        version: 5.4.4(@types/node@20.19.0)
+      vitest:
+        specifier: 2.1.8
+        version: 2.1.8(@types/node@20.19.0)
+
   lesson-acknowledgment:
     dependencies:
       '@classroomio/plugin-sdk':
