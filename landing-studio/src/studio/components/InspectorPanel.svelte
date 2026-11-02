@@ -48,7 +48,6 @@
 
   // Typography mock styling state for Figma/Webflow styling bar
   let fontWeight = $state('SemiBold 600');
-  let fontSize = $derived(selectedTargetType === 'heading' ? '48px' : '16px');
   let isBold = $state(true);
   let isItalic = $state(false);
   let isUnderline = $state(false);
@@ -62,6 +61,41 @@
   const heroElementOrder = $derived<LandingPageHeroElement[]>(doc.hero.elementOrder ?? DEFAULT_HERO_ORDER);
   const heroMediaPosition = $derived(doc.hero.mediaPosition ?? 'right');
   const heroAlignment = $derived(doc.hero.alignment ?? 'left');
+
+  const activeFontSize = $derived.by<number>(() => {
+    if (selectedSectionId === 'hero') {
+      if (selectedTargetType === 'heading') return doc.hero.headlineSize ?? 48;
+      if (selectedTargetType === 'subtitle') return doc.hero.subheadlineSize ?? 18;
+      if (selectedTargetType === 'badge') return doc.hero.badgeSize ?? 12;
+    }
+    const key = `${selectedSectionId}-${selectedTargetType === 'heading' ? 'title' : 'sub'}`;
+    return doc.elementStyles?.[key]?.fontSize ?? (selectedTargetType === 'heading' ? 30 : 16);
+  });
+
+  const activeMediaWidth = $derived.by<number>(() => {
+    return doc.hero.mediaWidth ?? doc.elementStyles?.['hero-image']?.width ?? 520;
+  });
+
+  function setFontSize(val: number) {
+    const num = Math.max(8, Math.min(120, val));
+    if (selectedSectionId === 'hero') {
+      if (selectedTargetType === 'heading') doc.hero.headlineSize = num;
+      else if (selectedTargetType === 'subtitle') doc.hero.subheadlineSize = num;
+      else if (selectedTargetType === 'badge') doc.hero.badgeSize = num;
+    }
+    const key = `${selectedSectionId}-${selectedTargetType === 'heading' ? 'title' : 'sub'}`;
+    if (!doc.elementStyles) doc.elementStyles = {};
+    doc.elementStyles[key] = { ...(doc.elementStyles[key] ?? {}), fontSize: num };
+    onChange();
+  }
+
+  function setMediaWidth(val: number) {
+    const num = Math.max(120, Math.min(1200, val));
+    doc.hero.mediaWidth = num;
+    if (!doc.elementStyles) doc.elementStyles = {};
+    doc.elementStyles['hero-image'] = { ...(doc.elementStyles['hero-image'] ?? {}), width: num, maxWidth: num };
+    onChange();
+  }
 
   function moveHeroElement(key: 'badge' | 'headline' | 'subheadline' | 'actions', dir: 'up' | 'down') {
     const list: LandingPageHeroElement[] = [...heroElementOrder];
@@ -339,10 +373,13 @@
             </select>
           </div>
           <div class="space-y-1">
-            <span class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Size</span>
+            <span class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Size (px)</span>
             <input
-              type="text"
-              bind:value={fontSize}
+              type="number"
+              min="8"
+              max="120"
+              value={activeFontSize}
+              oninput={(e) => setFontSize(Number((e.currentTarget as HTMLInputElement).value))}
               class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
             />
           </div>
@@ -533,6 +570,35 @@
               {/each}
             </div>
           </div>
+
+          <!-- Image Size / Width Slider & Input -->
+          {#if doc.hero.mediaType === 'image'}
+            <div class="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-950">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Image Size / Width</span>
+                <span class="text-xs font-mono font-bold text-blue-600">{activeMediaWidth}px</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="160"
+                  max="960"
+                  step="10"
+                  value={activeMediaWidth}
+                  oninput={(e) => setMediaWidth(Number((e.currentTarget as HTMLInputElement).value))}
+                  class="flex-1 accent-blue-600 cursor-pointer"
+                />
+                <input
+                  type="number"
+                  min="160"
+                  max="1200"
+                  value={activeMediaWidth}
+                  oninput={(e) => setMediaWidth(Number((e.currentTarget as HTMLInputElement).value))}
+                  class="w-16 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-mono font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white text-center"
+                />
+              </div>
+            </div>
+          {/if}
 
           <!-- Alignment Toggle -->
           <div class="space-y-1">

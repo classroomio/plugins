@@ -225,6 +225,140 @@
     draggedSectionIndex = null;
     dropTargetIndex = null;
   }
+
+  interface ActiveResizeState {
+    targetKey: string;
+    type: 'image' | 'text' | 'box';
+    direction: 'nw' | 'ne' | 'sw' | 'se' | 'e' | 'w' | 's' | 'n';
+    startX: number;
+    startY: number;
+    initialSize: number;
+    currentSize: number;
+  }
+
+  let activeResize = $state<ActiveResizeState | null>(null);
+
+  function startResize(
+    e: PointerEvent,
+    targetKey: string,
+    type: 'image' | 'text' | 'box',
+    direction: 'nw' | 'ne' | 'sw' | 'se' | 'e' | 'w' | 's' | 'n'
+  ) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    let initialSize = 48;
+    if (type === 'image') {
+      initialSize = doc.hero.mediaWidth ?? doc.elementStyles?.[targetKey]?.width ?? 520;
+    } else if (type === 'text') {
+      if (targetKey === 'hero-headline') {
+        initialSize = doc.hero.headlineSize ?? doc.elementStyles?.['hero-headline']?.fontSize ?? 48;
+      } else if (targetKey === 'hero-subheadline') {
+        initialSize = doc.hero.subheadlineSize ?? doc.elementStyles?.['hero-subheadline']?.fontSize ?? 18;
+      } else if (targetKey === 'hero-badge') {
+        initialSize = doc.hero.badgeSize ?? doc.elementStyles?.['hero-badge']?.fontSize ?? 12;
+      } else {
+        initialSize = doc.elementStyles?.[targetKey]?.fontSize ?? 30;
+      }
+    } else {
+      initialSize = doc.elementStyles?.[targetKey]?.width ?? 320;
+    }
+
+    activeResize = {
+      targetKey,
+      type,
+      direction,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialSize,
+      currentSize: initialSize
+    };
+
+    window.addEventListener('pointermove', handleResizeMove);
+    window.addEventListener('pointerup', handleResizeUp);
+    window.addEventListener('pointercancel', handleResizeUp);
+  }
+
+  function handleResizeMove(e: PointerEvent) {
+    if (!activeResize) return;
+    const { targetKey, type, direction, startX, startY, initialSize } = activeResize;
+    const deltaX = (e.clientX - startX) / (zoom || 1);
+    const deltaY = (e.clientY - startY) / (zoom || 1);
+
+    if (type === 'image') {
+      let change = deltaX;
+      if (direction === 'nw' || direction === 'w' || direction === 'sw') {
+        change = -deltaX;
+      } else if (direction === 's') {
+        change = deltaY * 1.4;
+      }
+      const newWidth = Math.max(160, Math.min(1000, Math.round(initialSize + change)));
+      activeResize.currentSize = newWidth;
+
+      if (targetKey === 'hero-image' || targetKey === 'hero') {
+        doc.hero.mediaWidth = newWidth;
+      }
+      if (!doc.elementStyles) doc.elementStyles = {};
+      doc.elementStyles[targetKey] = {
+        ...(doc.elementStyles[targetKey] ?? {}),
+        width: newWidth,
+        maxWidth: newWidth
+      };
+      onChange();
+    } else if (type === 'text') {
+      let delta = (direction === 'e' || direction === 'w') ? deltaX : (deltaX + deltaY) / 2;
+      if (direction === 'nw' || direction === 'w' || direction === 'sw') {
+        delta = -delta;
+      }
+      const step = Math.round(delta / 3.5);
+      let minSize = 12;
+      let maxSize = 96;
+      if (targetKey.includes('badge')) {
+        minSize = 9;
+        maxSize = 24;
+      } else if (targetKey.includes('sub')) {
+        minSize = 12;
+        maxSize = 36;
+      }
+
+      const newFontSize = Math.max(minSize, Math.min(maxSize, Math.round(initialSize + step)));
+      activeResize.currentSize = newFontSize;
+
+      if (targetKey === 'hero-headline') {
+        doc.hero.headlineSize = newFontSize;
+      } else if (targetKey === 'hero-subheadline') {
+        doc.hero.subheadlineSize = newFontSize;
+      } else if (targetKey === 'hero-badge') {
+        doc.hero.badgeSize = newFontSize;
+      }
+
+      if (!doc.elementStyles) doc.elementStyles = {};
+      doc.elementStyles[targetKey] = {
+        ...(doc.elementStyles[targetKey] ?? {}),
+        fontSize: newFontSize
+      };
+      onChange();
+    } else {
+      let change = deltaX;
+      if (direction === 'nw' || direction === 'w' || direction === 'sw') change = -deltaX;
+      const newWidth = Math.max(120, Math.min(800, Math.round(initialSize + change)));
+      activeResize.currentSize = newWidth;
+      if (!doc.elementStyles) doc.elementStyles = {};
+      doc.elementStyles[targetKey] = {
+        ...(doc.elementStyles[targetKey] ?? {}),
+        width: newWidth
+      };
+      onChange();
+    }
+  }
+
+  function handleResizeUp() {
+    window.removeEventListener('pointermove', handleResizeMove);
+    window.removeEventListener('pointerup', handleResizeUp);
+    window.removeEventListener('pointercancel', handleResizeUp);
+    activeResize = null;
+    onChange();
+  }
 </script>
 
 <!-- Embedded Landing Page CSS Scoped Directly to Canvas -->
@@ -245,18 +379,63 @@
   }
   :global(.builder-handle) {
     position: absolute;
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     background: #ffffff !important;
     border: 2px solid #2563eb !important;
-    border-radius: 1.5px;
-    pointer-events: none;
-    z-index: 50;
+    border-radius: 2px;
+    pointer-events: auto !important;
+    z-index: 60;
+    transition: transform 0.1s ease, background-color 0.1s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   }
-  :global(.builder-handle-tl) { top: -8px; left: -8px; }
-  :global(.builder-handle-tr) { top: -8px; right: -8px; }
-  :global(.builder-handle-bl) { bottom: -8px; left: -8px; }
-  :global(.builder-handle-br) { bottom: -8px; right: -8px; }
+  :global(.builder-handle:hover) {
+    transform: scale(1.3);
+    background-color: #2563eb !important;
+    border-color: #ffffff !important;
+  }
+  :global(.builder-handle-tl) { top: -6px; left: -6px; cursor: nwse-resize !important; }
+  :global(.builder-handle-tr) { top: -6px; right: -6px; cursor: nesw-resize !important; }
+  :global(.builder-handle-bl) { bottom: -6px; left: -6px; cursor: nesw-resize !important; }
+  :global(.builder-handle-br) { bottom: -6px; right: -6px; cursor: nwse-resize !important; }
+
+  :global(.builder-handle-e) {
+    top: 50%;
+    right: -6px;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 14px;
+    border-radius: 3px;
+    cursor: ew-resize !important;
+  }
+  :global(.builder-handle-e:hover) {
+    transform: translateY(-50%) scale(1.25);
+  }
+  :global(.builder-handle-w) {
+    top: 50%;
+    left: -6px;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 14px;
+    border-radius: 3px;
+    cursor: ew-resize !important;
+  }
+  :global(.builder-handle-w:hover) {
+    transform: translateY(-50%) scale(1.25);
+  }
+  :global(.builder-handle-s) {
+    left: 50%;
+    bottom: -6px;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 6px;
+    border-radius: 3px;
+    cursor: ns-resize !important;
+  }
+  :global(.builder-handle-s:hover) {
+    transform: translateX(-50%) scale(1.25);
+  }
+
   :global(.builder-tag) {
     position: absolute;
     top: -24px;
@@ -270,9 +449,62 @@
     white-space: nowrap;
     z-index: 60;
     pointer-events: none;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   }
 </style>
+
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+{#snippet resizeOverlay(targetKey: string, type: 'image' | 'text' | 'box', tagLabel: string, currentDisplaySize: string = '')}
+  <div
+    class="builder-handle builder-handle-tl"
+    data-resize-handle="nw"
+    onpointerdown={(e) => startResize(e, targetKey, type, 'nw')}
+  ></div>
+  <div
+    class="builder-handle builder-handle-tr"
+    data-resize-handle="ne"
+    onpointerdown={(e) => startResize(e, targetKey, type, 'ne')}
+  ></div>
+  <div
+    class="builder-handle builder-handle-bl"
+    data-resize-handle="sw"
+    onpointerdown={(e) => startResize(e, targetKey, type, 'sw')}
+  ></div>
+  <div
+    class="builder-handle builder-handle-br"
+    data-resize-handle="se"
+    onpointerdown={(e) => startResize(e, targetKey, type, 'se')}
+  ></div>
+
+  <div
+    class="builder-handle builder-handle-e"
+    data-resize-handle="e"
+    onpointerdown={(e) => startResize(e, targetKey, type, 'e')}
+  ></div>
+  <div
+    class="builder-handle builder-handle-w"
+    data-resize-handle="w"
+    onpointerdown={(e) => startResize(e, targetKey, type, 'w')}
+  ></div>
+  <div
+    class="builder-handle builder-handle-s"
+    data-resize-handle="s"
+    onpointerdown={(e) => startResize(e, targetKey, type, 's')}
+  ></div>
+
+  <div class="builder-tag flex items-center gap-1.5">
+    <span>{tagLabel}</span>
+    {#if activeResize && activeResize.targetKey === targetKey}
+      <span class="rounded bg-blue-700 px-1 py-0.2 text-[9px] font-mono font-bold text-white">
+        {activeResize.currentSize}px
+      </span>
+    {:else if currentDisplaySize}
+      <span class="rounded bg-blue-700 px-1 py-0.2 text-[9px] font-mono text-white">
+        {currentDisplaySize}
+      </span>
+    {/if}
+  </div>
+{/snippet}
 
 <!-- Canvas Stage Container -->
 <div
@@ -370,6 +602,7 @@
             {#if heroMediaPosition === 'left' && doc.hero.mediaType === 'image' && doc.hero.mediaUrl}
               <div
                 class="cio-lp-hero-media cursor-pointer relative group {isHeroMediaSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
+                style="max-width: {doc.hero.mediaWidth ?? doc.elementStyles?.['hero-image']?.width ?? 520}px; width: 100%;"
                 role="presentation"
                 onclick={(e) => { e.stopPropagation(); selectElement('hero', 'image', 'Hero Image'); }}
               >
@@ -379,11 +612,7 @@
                     <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('right', e)}>Move Right</button>
                     <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('bottom', e)}>Move Bottom</button>
                   </div>
-                  <div class="builder-handle builder-handle-tl"></div>
-                  <div class="builder-handle builder-handle-tr"></div>
-                  <div class="builder-handle builder-handle-bl"></div>
-                  <div class="builder-handle builder-handle-br"></div>
-                  <div class="builder-tag">Hero Image (Left)</div>
+                  {@render resizeOverlay('hero-image', 'image', 'Hero Image (Left)', `${doc.hero.mediaWidth ?? doc.elementStyles?.['hero-image']?.width ?? 520}px`)}
                 {/if}
                 <img src={doc.hero.mediaUrl} alt={doc.hero.headline} class="cio-lp-hero-img" />
               </div>
@@ -396,6 +625,7 @@
                 {#if elementKey === 'badge' && doc.hero.badge}
                   <div
                     class="cio-lp-hero-badge inline-block cursor-pointer transition-all relative {isBadgeSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                    style="font-size: {doc.hero.badgeSize ?? doc.elementStyles?.['hero-badge']?.fontSize ?? 12}px;"
                     role="presentation"
                     contenteditable={editingInlineTarget === 'hero-badge'}
                     onclick={(e) => { e.stopPropagation(); selectElement('hero', 'badge', doc.hero.badge ?? ''); }}
@@ -422,11 +652,7 @@
                           <ChevronDownIcon size={11} />
                         </button>
                       </div>
-                      <div class="builder-handle builder-handle-tl"></div>
-                      <div class="builder-handle builder-handle-tr"></div>
-                      <div class="builder-handle builder-handle-bl"></div>
-                      <div class="builder-handle builder-handle-br"></div>
-                      <div class="builder-tag">Badge</div>
+                      {@render resizeOverlay('hero-badge', 'text', 'Badge', `${doc.hero.badgeSize ?? doc.elementStyles?.['hero-badge']?.fontSize ?? 12}px`)}
                     {/if}
                   </div>
 
@@ -434,6 +660,7 @@
                 {:else if elementKey === 'headline'}
                   <h1
                     class="cio-lp-hero-title cursor-pointer transition-all relative {isHeadlineSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                    style="font-size: {doc.hero.headlineSize ?? doc.elementStyles?.['hero-headline']?.fontSize ?? 48}px;"
                     role="presentation"
                     contenteditable={editingInlineTarget === 'hero-headline'}
                     onclick={(e) => { e.stopPropagation(); selectElement('hero', 'heading', doc.hero.headline); }}
@@ -460,11 +687,7 @@
                           <ChevronDownIcon size={11} />
                         </button>
                       </div>
-                      <div class="builder-handle builder-handle-tl"></div>
-                      <div class="builder-handle builder-handle-tr"></div>
-                      <div class="builder-handle builder-handle-bl"></div>
-                      <div class="builder-handle builder-handle-br"></div>
-                      <div class="builder-tag">Hero Section &gt; Heading 1</div>
+                      {@render resizeOverlay('hero-headline', 'text', 'Hero Section > Heading 1', `${doc.hero.headlineSize ?? doc.elementStyles?.['hero-headline']?.fontSize ?? 48}px`)}
                     {/if}
                   </h1>
 
@@ -472,6 +695,7 @@
                 {:else if elementKey === 'subheadline' && doc.hero.subheadline}
                   <p
                     class="cio-lp-hero-sub cursor-pointer transition-all relative {isSubheadlineSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                    style="font-size: {doc.hero.subheadlineSize ?? doc.elementStyles?.['hero-subheadline']?.fontSize ?? 18}px;"
                     role="presentation"
                     contenteditable={editingInlineTarget === 'hero-sub'}
                     onclick={(e) => { e.stopPropagation(); selectElement('hero', 'subtitle', doc.hero.subheadline); }}
@@ -498,11 +722,7 @@
                           <ChevronDownIcon size={11} />
                         </button>
                       </span>
-                      <span class="builder-handle builder-handle-tl"></span>
-                      <span class="builder-handle builder-handle-tr"></span>
-                      <span class="builder-handle builder-handle-bl"></span>
-                      <span class="builder-handle builder-handle-br"></span>
-                      <span class="builder-tag">Hero Subtitle</span>
+                      {@render resizeOverlay('hero-subheadline', 'text', 'Hero Subtitle', `${doc.hero.subheadlineSize ?? doc.elementStyles?.['hero-subheadline']?.fontSize ?? 18}px`)}
                     {/if}
                   </p>
 
@@ -546,11 +766,7 @@
                               </button>
                             {/if}
                           </div>
-                          <div class="builder-handle builder-handle-tl"></div>
-                          <div class="builder-handle builder-handle-tr"></div>
-                          <div class="builder-handle builder-handle-bl"></div>
-                          <div class="builder-handle builder-handle-br"></div>
-                          <div class="builder-tag">Primary Button</div>
+                          {@render resizeOverlay('hero-btn', 'box', 'Primary Button')}
                         {/if}
                       </div>
 
@@ -608,11 +824,7 @@
                               <ArrowLeftRightIcon size={10} /> Swap
                             </button>
                           </div>
-                          <div class="builder-handle builder-handle-tl"></div>
-                          <div class="builder-handle builder-handle-tr"></div>
-                          <div class="builder-handle builder-handle-bl"></div>
-                          <div class="builder-handle builder-handle-br"></div>
-                          <div class="builder-tag">Primary Button</div>
+                          {@render resizeOverlay('hero-btn', 'box', 'Primary Button')}
                         {/if}
                       </div>
                     {/if}
@@ -625,6 +837,7 @@
             {#if (heroMediaPosition === 'right' || heroMediaPosition === 'bottom') && doc.hero.mediaType === 'image' && doc.hero.mediaUrl}
               <div
                 class="cio-lp-hero-media cursor-pointer relative group {isHeroMediaSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
+                style="max-width: {doc.hero.mediaWidth ?? doc.elementStyles?.['hero-image']?.width ?? 520}px; width: 100%;"
                 role="presentation"
                 onclick={(e) => { e.stopPropagation(); selectElement('hero', 'image', 'Hero Image'); }}
               >
@@ -634,11 +847,7 @@
                     <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('left', e)}>Move Left</button>
                     <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('bottom', e)}>Move Bottom</button>
                   </div>
-                  <div class="builder-handle builder-handle-tl"></div>
-                  <div class="builder-handle builder-handle-tr"></div>
-                  <div class="builder-handle builder-handle-bl"></div>
-                  <div class="builder-handle builder-handle-br"></div>
-                  <div class="builder-tag">Hero Image</div>
+                  {@render resizeOverlay('hero-image', 'image', 'Hero Image', `${doc.hero.mediaWidth ?? doc.elementStyles?.['hero-image']?.width ?? 520}px`)}
                 {/if}
                 <img src={doc.hero.mediaUrl} alt={doc.hero.headline} class="cio-lp-hero-img" />
               </div>
@@ -759,6 +968,7 @@
                   <div class="cio-lp-section-header">
                     <h2
                       class="cio-lp-section-title cursor-pointer transition-all {isSecTitleSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                      style="font-size: {doc.elementStyles?.[`${sec.id}-title`]?.fontSize ?? 30}px;"
                       role="presentation"
                       contenteditable={editingInlineTarget === `${sec.id}-title`}
                       onclick={(e) => { e.stopPropagation(); selectElement(sec.id, 'heading', sec.title); }}
@@ -777,16 +987,13 @@
                     >
                       {sec.title}
                       {#if isSecTitleSelected}
-                        <div class="builder-handle builder-handle-tl"></div>
-                        <div class="builder-handle builder-handle-tr"></div>
-                        <div class="builder-handle builder-handle-bl"></div>
-                        <div class="builder-handle builder-handle-br"></div>
-                        <div class="builder-tag">{sec.type.toUpperCase()} &gt; Title</div>
+                        {@render resizeOverlay(`${sec.id}-title`, 'text', `${sec.type.toUpperCase()} > Title`, `${doc.elementStyles?.[`${sec.id}-title`]?.fontSize ?? 30}px`)}
                       {/if}
                     </h2>
                     {#if 'subtitle' in sec && sec.subtitle}
                       <p
                         class="cio-lp-section-sub cursor-pointer transition-all {isSecSubSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                        style="font-size: {doc.elementStyles?.[`${sec.id}-sub`]?.fontSize ?? 16}px;"
                         role="presentation"
                         contenteditable={editingInlineTarget === `${sec.id}-sub`}
                         onclick={(e) => { e.stopPropagation(); selectElement(sec.id, 'subtitle', sec.subtitle); }}
@@ -805,11 +1012,7 @@
                       >
                         {sec.subtitle}
                         {#if isSecSubSelected}
-                          <span class="builder-handle builder-handle-tl"></span>
-                          <span class="builder-handle builder-handle-tr"></span>
-                          <span class="builder-handle builder-handle-bl"></span>
-                          <span class="builder-handle builder-handle-br"></span>
-                          <span class="builder-tag">{sec.type.toUpperCase()} &gt; Subtitle</span>
+                          {@render resizeOverlay(`${sec.id}-sub`, 'text', `${sec.type.toUpperCase()} > Subtitle`, `${doc.elementStyles?.[`${sec.id}-sub`]?.fontSize ?? 16}px`)}
                         {/if}
                       </p>
                     {/if}
@@ -960,11 +1163,7 @@
                               <TrashIcon size={11} />
                             </button>
                           </div>
-                          <div class="builder-handle builder-handle-tl"></div>
-                          <div class="builder-handle builder-handle-tr"></div>
-                          <div class="builder-handle builder-handle-bl"></div>
-                          <div class="builder-handle builder-handle-br"></div>
-                          <div class="builder-tag">Feature #{itemIdx + 1}</div>
+                          {@render resizeOverlay(item.id, 'box', `Feature #${itemIdx + 1}`)}
                         {/if}
                         <div class="size-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
                           <SparklesIcon size={16} />
@@ -1023,11 +1222,7 @@
                               <TrashIcon size={11} />
                             </button>
                           </div>
-                          <div class="builder-handle builder-handle-tl"></div>
-                          <div class="builder-handle builder-handle-tr"></div>
-                          <div class="builder-handle builder-handle-bl"></div>
-                          <div class="builder-handle builder-handle-br"></div>
-                          <div class="builder-tag">Testimonial #{tIdx + 1}</div>
+                          {@render resizeOverlay(t.id, 'box', `Testimonial #${tIdx + 1}`)}
                         {/if}
                         <p class="text-xs italic text-slate-700 leading-relaxed">“{t.quote}”</p>
                         <div class="flex items-center gap-2.5 pt-2 border-t border-slate-100">
@@ -1091,11 +1286,7 @@
                               <TrashIcon size={11} />
                             </button>
                           </div>
-                          <div class="builder-handle builder-handle-tl"></div>
-                          <div class="builder-handle builder-handle-tr"></div>
-                          <div class="builder-handle builder-handle-bl"></div>
-                          <div class="builder-handle builder-handle-br"></div>
-                          <div class="builder-tag">FAQ #{faqIdx + 1}</div>
+                          {@render resizeOverlay(faq.id, 'box', `FAQ #${faqIdx + 1}`)}
                         {/if}
                         <h4 class="text-xs font-bold text-slate-900">{faq.question}</h4>
                         <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">{faq.answer}</p>
@@ -1146,11 +1337,7 @@
                               <ChevronRightIcon size={12} />
                             </button>
                           </div>
-                          <div class="builder-handle builder-handle-tl"></div>
-                          <div class="builder-handle builder-handle-tr"></div>
-                          <div class="builder-handle builder-handle-bl"></div>
-                          <div class="builder-handle builder-handle-br"></div>
-                          <div class="builder-tag">Stat #{sIdx + 1}</div>
+                          {@render resizeOverlay(st.id, 'box', `Stat #${sIdx + 1}`)}
                         {/if}
                         <div class="text-2xl font-black text-blue-600">{st.value}</div>
                         <div class="text-xs font-semibold text-slate-600 mt-1">{st.label}</div>
