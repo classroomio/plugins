@@ -8,31 +8,33 @@
     type LandingPageCourse,
     type LandingPageDocumentV1,
     type LandingPageOrganization,
+    type LandingPageSectionV1,
     type LandingPageTemplateId
   } from '@cio/landing-pages';
   import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
   import CheckIcon from '@lucide/svelte/icons/check';
   import EyeIcon from '@lucide/svelte/icons/eye';
-  import GlobeIcon from '@lucide/svelte/icons/globe';
-  import LayersIcon from '@lucide/svelte/icons/layers';
   import LayoutTemplateIcon from '@lucide/svelte/icons/layout-template';
   import LoaderIcon from '@lucide/svelte/icons/loader-2';
-  import PaletteIcon from '@lucide/svelte/icons/palette';
-  import PanelLeftCloseIcon from '@lucide/svelte/icons/panel-left-close';
-  import PanelLeftOpenIcon from '@lucide/svelte/icons/panel-left-open';
+  import MonitorIcon from '@lucide/svelte/icons/monitor';
   import PencilIcon from '@lucide/svelte/icons/pencil';
   import PlusIcon from '@lucide/svelte/icons/plus';
+  import Redo2Icon from '@lucide/svelte/icons/redo-2';
   import SaveIcon from '@lucide/svelte/icons/save';
+  import SmartphoneIcon from '@lucide/svelte/icons/smartphone';
+  import TabletIcon from '@lucide/svelte/icons/tablet';
   import TrashIcon from '@lucide/svelte/icons/trash-2';
+  import Undo2Icon from '@lucide/svelte/icons/undo-2';
   import { StudioApiClient } from '../shared/api';
   import type { StudioLandingPageTemplate } from '../shared/types';
-  import HeroEditor from './components/HeroEditor.svelte';
+  import FloatingToolbar from './components/FloatingToolbar.svelte';
+  import InspectorPanel from './components/InspectorPanel.svelte';
   import LivePreview from './components/LivePreview.svelte';
-  import SectionsEditor from './components/SectionsEditor.svelte';
-  import TemplatePicker from './components/TemplatePicker.svelte';
-  import ThemeEditor from './components/ThemeEditor.svelte';
 
-  type Tab = 'sections' | 'hero' | 'theme' | 'templates';
+  type ViewportMode = 'desktop' | 'tablet' | 'mobile';
+  type TargetType = 'heading' | 'subtitle' | 'button' | 'video' | 'courses' | 'contact' | 'section' | 'global';
+  type ToolMode = 'pointer' | 'text' | 'media' | 'layers';
+
   type CourseListResponse = {
     items?: Array<{
       id: string;
@@ -46,28 +48,65 @@
 
   const client: ClassroomIOClient = createClassroomIOClient();
   const api = new StudioApiClient(client);
-  let activeTab = $state<Tab>('sections');
-  let selectedSectionId = $state<string | null>(null);
+
   let templates = $state<StudioLandingPageTemplate[]>([]);
   let activeTemplate = $state<StudioLandingPageTemplate | null>(null);
-  let templateName = $state('');
+  let templateName = $state('Master Class Homepage');
   let document = $state<LandingPageDocumentV1>(getDefaultDocumentForTemplate('modern'));
   let savedSnapshot = $state('');
   let isLoading = $state(true);
   let isSaving = $state(false);
   let errorMessage = $state('');
   let editorOpen = $state(false);
-  let isSidebarCollapsed = $state(false);
   let isFullPreviewOpen = $state(false);
-  let organization = $state<LandingPageOrganization>({ id: '', name: 'My Academy', slug: '', logoUrl: null });
+
+  // Builder Canvas & Inspector State
+  let viewport = $state<ViewportMode>('desktop');
+  let zoom = $state<number>(1);
+  let selectedSectionId = $state<string | null>('hero');
+  let selectedTargetType = $state<TargetType>('heading');
+  let activeTool = $state<ToolMode>('pointer');
+
+  // Undo / Redo History Stack
+  let history = $state<string[]>([]);
+  let historyIndex = $state<number>(-1);
+
+  let organization = $state<LandingPageOrganization>({ id: '', name: 'Coursera Test', slug: 'coursera-test', logoUrl: null });
   let courses = $state<LandingPageCourse[]>([]);
+
   const isEditing = $derived(editorOpen);
   const currentSnapshot = $derived(JSON.stringify({ name: templateName.trim(), document }));
   const hasUnsavedChanges = $derived(editorOpen && currentSnapshot !== savedSnapshot);
+  const canUndo = $derived(historyIndex > 0);
+  const canRedo = $derived(historyIndex < history.length - 1 && history.length > 0);
 
   $effect(() => {
     void client.ui.setDirty(hasUnsavedChanges);
   });
+
+  function recordSnapshot() {
+    const snap = JSON.stringify(document);
+    if (historyIndex >= 0 && history[historyIndex] === snap) return;
+    const truncated = history.slice(0, historyIndex + 1);
+    truncated.push(snap);
+    if (truncated.length > 40) truncated.shift();
+    history = truncated;
+    historyIndex = truncated.length - 1;
+  }
+
+  function handleUndo() {
+    if (historyIndex > 0) {
+      historyIndex--;
+      document = JSON.parse(history[historyIndex]);
+    }
+  }
+
+  function handleRedo() {
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      document = JSON.parse(history[historyIndex]);
+    }
+  }
 
   onMount(async () => {
     try {
@@ -81,7 +120,7 @@
         organization = {
           id: context.organization.id,
           name: context.organization.name,
-          slug: '',
+          slug: 'coursera-test',
           logoUrl: context.organization.avatarUrl ?? null
         };
       }
@@ -114,25 +153,28 @@
     }
   });
 
-  function handleSectionSelected(id: string | null) {
-    selectedSectionId = id;
-    if (id === 'hero') {
-      activeTab = 'hero';
-    } else if (id) {
-      activeTab = 'sections';
-    }
+  function handleElementSelected(secId: string, targetType: TargetType, text: string) {
+    selectedSectionId = secId;
+    selectedTargetType = targetType;
+  }
+
+  function handleSelectSectionOnly(secId: string | null) {
+    selectedSectionId = secId;
+    selectedTargetType = secId === 'hero' ? 'heading' : secId ? 'section' : 'global';
   }
 
   function beginCreate() {
     editorOpen = true;
     activeTemplate = null;
-    templateName = 'Untitled landing page';
+    templateName = 'Master Class Homepage';
     document = JSON.parse(JSON.stringify(getDefaultDocumentForTemplate('modern')));
     savedSnapshot = '';
-    activeTab = 'sections';
-    selectedSectionId = document.sections[0]?.id ?? null;
+    selectedSectionId = 'hero';
+    selectedTargetType = 'heading';
+    activeTool = 'pointer';
     errorMessage = '';
-    isSidebarCollapsed = false;
+    history = [JSON.stringify(document)];
+    historyIndex = 0;
   }
 
   function beginEdit(template: StudioLandingPageTemplate) {
@@ -141,10 +183,12 @@
     templateName = template.name;
     document = JSON.parse(JSON.stringify(template.document));
     savedSnapshot = JSON.stringify({ name: templateName, document });
-    activeTab = 'sections';
-    selectedSectionId = document.sections[0]?.id ?? null;
+    selectedSectionId = 'hero';
+    selectedTargetType = 'heading';
+    activeTool = 'pointer';
     errorMessage = '';
-    isSidebarCollapsed = false;
+    history = [JSON.stringify(document)];
+    historyIndex = 0;
   }
 
   function closeEditor() {
@@ -156,9 +200,142 @@
     void client.ui.setDirty(false);
   }
 
-  function handleSelectTemplate(id: LandingPageTemplateId, nextDocument: LandingPageDocumentV1) {
-    document = JSON.parse(JSON.stringify(nextDocument));
-    selectedSectionId = document.sections[0]?.id ?? null;
+  function handleAddSection(type: LandingPageSectionV1['type']) {
+    const newId = `sec-${Date.now()}`;
+    let newSec: LandingPageSectionV1;
+
+    switch (type) {
+      case 'video':
+        newSec = {
+          id: newId,
+          type: 'video',
+          enabled: true,
+          title: 'Watch How Our Academy Transforms Careers',
+          subtitle: 'A quick tour inside our interactive learning environment.',
+          provider: 'youtube',
+          videoId: 'dQw4w9WgXcQ',
+          aspectRatio: '16/9'
+        };
+        break;
+      case 'contact':
+        newSec = {
+          id: newId,
+          type: 'contact',
+          enabled: true,
+          title: 'Get In Touch',
+          subtitle: 'Have questions about admissions or corporate teams? Send us a message.',
+          submitLabel: 'Send Message',
+          successMessage: 'Thank you! Our admissions team will reach out shortly.',
+          fields: [
+            { id: `f-${Date.now()}-1`, name: 'fullName', label: 'Full Name', type: 'text', required: true, placeholder: 'Jane Doe' },
+            { id: `f-${Date.now()}-2`, name: 'email', label: 'Email Address', type: 'email', required: true, placeholder: 'jane@example.com' },
+            { id: `f-${Date.now()}-3`, name: 'message', label: 'Message', type: 'textarea', required: true, placeholder: 'Tell us how we can help...' }
+          ]
+        };
+        break;
+      case 'courses':
+        newSec = {
+          id: newId,
+          type: 'courses',
+          enabled: true,
+          title: 'Featured Programs & Courses',
+          subtitle: 'Explore our latest cohorts, self-paced masterclasses, and workshops.',
+          viewAllLabel: 'Browse All Courses',
+          viewAllHref: '/courses',
+          maxItems: 6,
+          selectedCourseIds: []
+        };
+        break;
+      case 'features':
+        newSec = {
+          id: newId,
+          type: 'features',
+          enabled: true,
+          title: 'Why Learn With Us',
+          subtitle: 'Everything you need to master modern skills from world-class practitioners.',
+          items: [
+            { id: `f-1`, title: 'Expert-Led Masterclasses', description: 'Curriculum authored and taught by seasoned industry professionals.' },
+            { id: `f-2`, title: 'Hands-on Projects', description: 'Build a production-grade portfolio that impresses hiring managers.' },
+            { id: `f-3`, title: 'Verified Certificates', description: 'Earn digital credentials you can proudly share on LinkedIn.' }
+          ]
+        };
+        break;
+      case 'testimonials':
+        newSec = {
+          id: newId,
+          type: 'testimonials',
+          enabled: true,
+          title: 'Loved by Learners Everywhere',
+          subtitle: 'Hear how our graduates accelerated their skills and landed their dream roles.',
+          items: [
+            { id: `t-1`, name: 'Alex Johnson', role: 'Software Engineer', quote: 'The interactive lessons and clear real-world examples were game-changing.', rating: 5 },
+            { id: `t-2`, name: 'Elena Rostova', role: 'Product Designer', quote: 'The best investment in my career. Practical, deep, and beautifully designed.', rating: 5 }
+          ]
+        };
+        break;
+      case 'faq':
+        newSec = {
+          id: newId,
+          type: 'faq',
+          enabled: true,
+          title: 'Frequently Asked Questions',
+          subtitle: 'Everything you need to know about curriculum access and certificates.',
+          items: [
+            { id: `faq-1`, question: 'How long do I have access to course content?', answer: 'You get full lifetime access to all lessons, code files, and community updates.' },
+            { id: `faq-2`, question: 'Do I get a certificate upon completion?', answer: 'Yes! Upon finishing all milestone requirements, an official verifiable certificate is issued.' }
+          ]
+        };
+        break;
+      case 'cta':
+        newSec = {
+          id: newId,
+          type: 'cta',
+          enabled: true,
+          title: 'Start Learning Today',
+          description: 'Join ambitious students mastering new skills right now.',
+          action: { label: 'Explore All Courses', href: '/courses' }
+        };
+        break;
+      case 'stats':
+        newSec = {
+          id: newId,
+          type: 'stats',
+          enabled: true,
+          title: 'Our Track Record',
+          subtitle: 'Proven outcomes for students across more than 40 countries.',
+          items: [
+            { id: `st-1`, value: '12,000+', label: 'Active Students' },
+            { id: `st-2`, value: '96%', label: 'Completion Rate' },
+            { id: `st-3`, value: '4.9/5', label: 'Average Rating' }
+          ]
+        };
+        break;
+    }
+
+    document.sections.push(newSec);
+    selectedSectionId = newSec.id;
+    selectedTargetType = 'section';
+    recordSnapshot();
+  }
+
+  function handleSelectTool(tool: ToolMode) {
+    activeTool = tool;
+    if (tool === 'text') {
+      selectedSectionId = 'hero';
+      selectedTargetType = 'heading';
+    } else if (tool === 'media') {
+      // Find video section or add one
+      const vid = document.sections.find((s) => s.type === 'video');
+      if (vid) {
+        selectedSectionId = vid.id;
+        selectedTargetType = 'video';
+      } else {
+        handleAddSection('video');
+      }
+    } else if (tool === 'layers') {
+      selectedSectionId = null;
+      selectedTargetType = 'global';
+    }
   }
 
   async function saveTemplate() {
@@ -216,6 +393,7 @@
 </script>
 
 {#if !isEditing}
+  <!-- Templates Gallery List View -->
   <div class="min-h-screen bg-slate-50 p-6 md:p-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans">
     <header class="mx-auto mb-8 flex max-w-6xl items-center justify-between gap-4 border-b border-slate-200/80 pb-6 dark:border-slate-800">
       <div class="flex items-center gap-3.5">
@@ -311,36 +489,40 @@
     </main>
   </div>
 {:else}
+  <!-- Visual Page Builder Screen (Exact Figma/Webflow Layout) -->
   <div
     class="flex h-screen w-screen flex-col overflow-hidden bg-slate-100 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100"
   >
-    <!-- Studio Header (ClassroomIO standard 56px header) -->
+    <!-- 1. Top Builder Header (Matching Mockup & Subagent Screenshot) -->
     <header
-      class="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 z-30"
+      class="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 z-30 shadow-xs"
     >
-      <div class="flex min-w-0 items-center gap-3">
+      <!-- Left: Back & Template Title -->
+      <div class="flex items-center gap-3">
         <button
-          class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-colors"
+          class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-colors"
           aria-label="Back to templates"
           onclick={closeEditor}
         >
           <ArrowLeftIcon size={14} />
           <span>Templates</span>
         </button>
+
         <div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
+
         <div class="flex items-center gap-2">
-          <label for="editor-template-name" class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider hidden sm:block">Template:</label>
+          <label for="template-name-input" class="text-[11px] font-bold uppercase tracking-wider text-slate-400 hidden sm:block">Template:</label>
           <input
-            id="editor-template-name"
-            class="w-60 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-900 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            id="template-name-input"
+            class="w-56 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-900 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             bind:value={templateName}
-            aria-label="Template name"
             placeholder="Template name"
           />
         </div>
+
         {#if !hasUnsavedChanges}
           <span class="hidden sm:flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            <CheckIcon size={12} /> Saved
+            <span class="size-1.5 rounded-full bg-emerald-500"></span> Saved
           </span>
         {:else}
           <span class="hidden sm:flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
@@ -349,34 +531,81 @@
         {/if}
       </div>
 
+      <!-- Center: Undo/Redo & Viewport Segmented Switcher -->
+      <div class="flex items-center gap-3">
+        <!-- Undo / Redo in Header -->
+        <div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-800 dark:bg-slate-950">
+          <button
+            type="button"
+            class="p-1.5 text-slate-500 hover:text-slate-900 disabled:opacity-30 rounded hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400"
+            disabled={!canUndo}
+            onclick={handleUndo}
+            title="Undo (Cmd+Z)"
+          >
+            <Undo2Icon size={13} />
+          </button>
+          <button
+            type="button"
+            class="p-1.5 text-slate-500 hover:text-slate-900 disabled:opacity-30 rounded hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400"
+            disabled={!canRedo}
+            onclick={handleRedo}
+            title="Redo (Cmd+Shift+Z)"
+          >
+            <Redo2Icon size={13} />
+          </button>
+        </div>
+
+        <!-- Viewport Mode Buttons -->
+        <div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-semibold dark:border-slate-800 dark:bg-slate-950">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-md px-3 py-1 transition-all {viewport === 'desktop'
+              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
+            onclick={() => (viewport = 'desktop')}
+          >
+            <MonitorIcon size={14} />
+            <span class="hidden md:inline">Desktop (1280px)</span>
+          </button>
+
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-md px-3 py-1 transition-all {viewport === 'tablet'
+              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
+            onclick={() => (viewport = 'tablet')}
+          >
+            <TabletIcon size={14} />
+            <span class="hidden md:inline">Tablet (768px)</span>
+          </button>
+
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-md px-3 py-1 transition-all {viewport === 'mobile'
+              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
+            onclick={() => (viewport = 'mobile')}
+          >
+            <SmartphoneIcon size={14} />
+            <span class="hidden md:inline">Mobile (375px)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Preview & Save Actions -->
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
-          onclick={() => (isSidebarCollapsed = !isSidebarCollapsed)}
-          title={isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
-        >
-          {#if isSidebarCollapsed}
-            <PanelLeftOpenIcon size={14} />
-            <span class="hidden md:inline">Show sidebar</span>
-          {:else}
-            <PanelLeftCloseIcon size={14} />
-            <span class="hidden md:inline">Hide sidebar</span>
-          {/if}
-        </button>
-
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
+          class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
           onclick={() => (isFullPreviewOpen = true)}
-          title="Open full page preview"
+          title="Fullscreen preview"
         >
           <EyeIcon size={14} />
-          <span class="hidden sm:inline">Preview</span>
+          <span>Preview</span>
         </button>
 
         <button
-          class="flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all"
+          class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all"
           disabled={isSaving || !templateName.trim() || !hasUnsavedChanges}
           onclick={saveTemplate}
         >
@@ -393,64 +622,47 @@
 
     {#if errorMessage}<div class="bg-red-50 px-4 py-2 text-xs font-medium text-red-700 border-b border-red-200">{errorMessage}</div>{/if}
 
-    <!-- Workspace Body -->
+    <!-- 2. Workspace Body: Left Canvas + Right Contextual Inspector -->
     <div class="flex flex-1 overflow-hidden relative">
-      {#if !isSidebarCollapsed}
-        <!-- Left vertical tab icon strip -->
-        <nav
-          class="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-slate-200 bg-white py-3 dark:border-slate-800 dark:bg-slate-900 z-20"
-        >
-          {#each [{ id: 'sections', label: 'Sections', icon: LayersIcon }, { id: 'hero', label: 'Hero', icon: GlobeIcon }, { id: 'theme', label: 'Theme', icon: PaletteIcon }, { id: 'templates', label: 'Templates', icon: LayoutTemplateIcon }] as item (item.id)}
-            {@const Icon = item.icon}
-            {@const isActive = activeTab === item.id}
-            <button
-              class="relative flex w-12 flex-col items-center gap-1 rounded-xl p-2 text-[10px] font-semibold transition-all {isActive
-                ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'}"
-              onclick={() => (activeTab = item.id as Tab)}
-            >
-              {#if isActive}
-                <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-blue-600"></span>
-              {/if}
-              <Icon class="size-4" />
-              <span>{item.label}</span>
-            </button>
-          {/each}
-        </nav>
-
-        <!-- Sub-editor sidebar -->
-        <aside
-          class="w-80 md:w-96 shrink-0 overflow-y-auto border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 z-10 shadow-sm"
-        >
-          {#if activeTab === 'sections'}
-            <SectionsEditor
-              {document}
-              {courses}
-              {selectedSectionId}
-              onSelectSection={handleSectionSelected}
-              onChange={() => {}}
-            />
-          {:else if activeTab === 'hero'}
-            <HeroEditor {document} onChange={() => {}} />
-          {:else if activeTab === 'theme'}
-            <ThemeEditor {document} onChange={() => {}} />
-          {:else}
-            <TemplatePicker currentDocument={document} onSelectTemplate={handleSelectTemplate} />
-          {/if}
-        </aside>
-      {/if}
-
-      <!-- Main Canvas Stage -->
-      <main class="flex-1 overflow-hidden relative">
+      <!-- Main Visual Canvas Area (Center/Left) -->
+      <main class="flex-1 relative overflow-hidden flex flex-col bg-slate-100 dark:bg-slate-950">
         <LivePreview
           {document}
           {organization}
           {courses}
+          {viewport}
+          {zoom}
           {selectedSectionId}
-          onSelectSection={handleSectionSelected}
+          {selectedTargetType}
+          onSelectElement={handleElementSelected}
           bind:isFullPreviewOpen
         />
+
+        <!-- Floating Canvas Toolbar (Bottom-Center Island) -->
+        <FloatingToolbar
+          {zoom}
+          {canUndo}
+          {canRedo}
+          {activeTool}
+          onSelectTool={handleSelectTool}
+          onAddSection={handleAddSection}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onZoomIn={() => (zoom = Math.min(1.5, Math.round((zoom + 0.1) * 10) / 10))}
+          onZoomOut={() => (zoom = Math.max(0.4, Math.round((zoom - 0.1) * 10) / 10))}
+          onZoomReset={() => (zoom = 1)}
+        />
       </main>
+
+      <!-- 3. Right-Hand Contextual Inspector Panel -->
+      <InspectorPanel
+        {document}
+        {courses}
+        {selectedSectionId}
+        {selectedTargetType}
+        onSelectSection={handleSelectSectionOnly}
+        onChange={recordSnapshot}
+      />
     </div>
   </div>
 {/if}

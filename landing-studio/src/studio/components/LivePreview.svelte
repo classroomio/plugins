@@ -8,22 +8,21 @@
     type LandingPageOrganization,
     type LandingPageRenderData
   } from '@cio/landing-pages';
-  import EyeIcon from '@lucide/svelte/icons/eye';
   import LockIcon from '@lucide/svelte/icons/lock';
-  import Maximize2Icon from '@lucide/svelte/icons/maximize-2';
   import MonitorIcon from '@lucide/svelte/icons/monitor';
   import SmartphoneIcon from '@lucide/svelte/icons/smartphone';
   import TabletIcon from '@lucide/svelte/icons/tablet';
   import XIcon from '@lucide/svelte/icons/x';
-  import ZoomInIcon from '@lucide/svelte/icons/zoom-in';
-  import ZoomOutIcon from '@lucide/svelte/icons/zoom-out';
 
   interface Props {
     document: LandingPageDocumentV1;
     organization: LandingPageOrganization;
     courses: LandingPageCourse[];
+    viewport?: 'desktop' | 'tablet' | 'mobile';
+    zoom?: number;
     selectedSectionId?: string | null;
-    onSelectSection?: (id: string) => void;
+    selectedTargetType?: 'heading' | 'subtitle' | 'button' | 'video' | 'courses' | 'contact' | 'section' | 'global';
+    onSelectElement?: (sectionId: string, targetType: any, text: string) => void;
     isFullPreviewOpen?: boolean;
   }
 
@@ -31,91 +30,46 @@
     document: doc,
     organization,
     courses,
+    viewport = 'desktop',
+    zoom = 1,
     selectedSectionId = null,
-    onSelectSection,
+    selectedTargetType = 'global',
+    onSelectElement,
     isFullPreviewOpen = $bindable(false)
   }: Props = $props();
 
-  type ViewportMode = 'desktop' | 'tablet' | 'mobile';
-  type ZoomMode = 'fit' | 'manual';
-
-  let viewport = $state<ViewportMode>('desktop');
-  let zoomMode = $state<ZoomMode>('fit');
-  let manualZoom = $state<number>(1);
-  let stageWidth = $state<number>(800);
-  let stageHeight = $state<number>(600);
-  let desktopIframe = $state<HTMLIFrameElement | null>(null);
-  let tabletIframe = $state<HTMLIFrameElement | null>(null);
-  let mobileIframe = $state<HTMLIFrameElement | null>(null);
+  let canvasIframe = $state<HTMLIFrameElement | null>(null);
   let modalIframe = $state<HTMLIFrameElement | null>(null);
 
   const VIEWPORT_SPECS = {
-    desktop: { width: 1280, height: 850, label: 'Desktop', note: '1280px' },
-    tablet: { width: 768, height: 960, label: 'Tablet', note: '768px' },
-    mobile: { width: 375, height: 740, label: 'Mobile', note: '375px' }
+    desktop: { width: 1280, label: 'Desktop', note: '1280px' },
+    tablet: { width: 768, label: 'Tablet', note: '768px' },
+    mobile: { width: 375, label: 'Mobile', note: '375px' }
   } as const;
 
   const currentSpec = $derived(VIEWPORT_SPECS[viewport]);
 
-  const autoFitScale = $derived.by(() => {
-    if (!stageWidth || stageWidth <= 0) return 0.6;
-    const paddingX = 48;
-    const availableWidth = Math.max(280, stageWidth - paddingX);
-    const targetW = currentSpec.width;
-
-    if (viewport === 'desktop') {
-      const fitW = availableWidth / targetW;
-      return Math.min(1, Math.max(0.3, Math.round(fitW * 100) / 100));
-    }
-
-    if (viewport === 'tablet') {
-      const fitW = availableWidth / targetW;
-      return Math.min(1, Math.max(0.4, Math.round(fitW * 100) / 100));
-    }
-
-    if (availableWidth >= targetW) {
-      return 1;
-    }
-    return Math.min(1, Math.max(0.5, Math.round((availableWidth / targetW) * 100) / 100));
-  });
-
-  const activeScale = $derived(zoomMode === 'fit' ? autoFitScale : manualZoom);
-
-  function handleZoomIn() {
-    zoomMode = 'manual';
-    manualZoom = Math.min(1.5, Math.round((activeScale + 0.1) * 10) / 10);
-  }
-
-  function handleZoomOut() {
-    zoomMode = 'manual';
-    manualZoom = Math.max(0.3, Math.round((activeScale - 0.1) * 10) / 10);
-  }
-
-  function handleZoomReset() {
-    zoomMode = 'fit';
-  }
-
-  function handleSetZoomPreset(level: number) {
-    zoomMode = 'manual';
-    manualZoom = level;
-  }
-
   onMount(() => {
-    function handleWindowMessage(event: MessageEvent) {
-      if (event.data?.type === 'cio-studio:select-section') {
-        onSelectSection?.(event.data.sectionId);
+    function handleMessage(event: MessageEvent) {
+      if (event.data?.type === 'cio-studio:element-selected') {
+        const { sectionId, targetType, text } = event.data;
+        onSelectElement?.(sectionId, targetType, text);
       }
     }
-    window.addEventListener('message', handleWindowMessage);
-    return () => window.removeEventListener('message', handleWindowMessage);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   });
 
-  function syncHighlight(targetId: string | null) {
-    const iframes = [desktopIframe, tabletIframe, mobileIframe, modalIframe];
-    for (const ifr of iframes) {
+  function syncSelectionToIframe() {
+    const targetIframes = [canvasIframe, modalIframe];
+    for (const ifr of targetIframes) {
       if (ifr?.contentWindow) {
         ifr.contentWindow.postMessage(
-          { type: 'cio-studio:highlight-section', sectionId: targetId },
+          {
+            type: 'cio-studio:set-selection',
+            sectionId: selectedSectionId,
+            targetType: selectedTargetType
+          },
           '*'
         );
       }
@@ -123,7 +77,8 @@
   }
 
   $effect(() => {
-    syncHighlight(selectedSectionId);
+    // When selection changes, update highlights in iframe
+    syncSelectionToIframe();
   });
 
   const renderData = $derived<LandingPageRenderData>({
@@ -150,9 +105,88 @@
   });
 
   const interactiveHelperScript = `
+    <style>
+      .cio-builder-hover {
+        outline: 2px dashed #3b82f6 !important;
+        outline-offset: 3px !important;
+        cursor: pointer !important;
+      }
+      .cio-builder-selected {
+        outline: 2.5px solid #2563eb !important;
+        outline-offset: 4px !important;
+        position: relative !important;
+        cursor: pointer !important;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+      }
+      .cio-builder-handle {
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        background: #ffffff;
+        border: 2px solid #2563eb;
+        border-radius: 1.5px;
+        z-index: 9999;
+        pointer-events: none;
+      }
+      .cio-builder-handle-tl { top: -8px; left: -8px; }
+      .cio-builder-handle-tr { top: -8px; right: -8px; }
+      .cio-builder-handle-bl { bottom: -8px; left: -8px; }
+      .cio-builder-handle-br { bottom: -8px; right: -8px; }
+      .cio-builder-tag {
+        position: absolute;
+        top: -24px;
+        left: -4px;
+        background: #2563eb;
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+        z-index: 10000;
+        pointer-events: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      }
+    </style>
     <script>
       (function() {
-        function setupInteractiveCanvas() {
+        var activeHandles = [];
+        var activeTag = null;
+
+        function clearOverlays() {
+          activeHandles.forEach(function(h) { if (h.parentNode) h.parentNode.removeChild(h); });
+          activeHandles = [];
+          if (activeTag && activeTag.parentNode) {
+            activeTag.parentNode.removeChild(activeTag);
+            activeTag = null;
+          }
+          document.querySelectorAll('.cio-builder-selected').forEach(function(el) {
+            el.classList.remove('cio-builder-selected');
+          });
+        }
+
+        function createSelectionBox(targetEl, label) {
+          clearOverlays();
+          if (!targetEl) return;
+          targetEl.classList.add('cio-builder-selected');
+
+          var positions = ['tl', 'tr', 'bl', 'br'];
+          positions.forEach(function(pos) {
+            var handle = document.createElement('div');
+            handle.className = 'cio-builder-handle cio-builder-handle-' + pos;
+            targetEl.appendChild(handle);
+            activeHandles.push(handle);
+          });
+
+          var tag = document.createElement('div');
+          tag.className = 'cio-builder-tag';
+          tag.innerText = label || 'Element';
+          targetEl.appendChild(tag);
+          activeTag = tag;
+        }
+
+        function setupCanvasInteractions() {
           document.addEventListener('click', function(e) {
             var anchor = e.target.closest('a');
             if (anchor) e.preventDefault();
@@ -162,60 +196,116 @@
             e.preventDefault();
           }, true);
 
-          var selectables = document.querySelectorAll('.cio-lp-section, .cio-lp-hero, header.cio-lp-header, footer.cio-lp-footer');
-          selectables.forEach(function(el) {
-            el.style.cursor = 'pointer';
-            el.style.position = el.style.position || 'relative';
-            el.style.transition = 'box-shadow 0.15s ease, outline 0.15s ease';
+          // Find interactive elements
+          var headings = document.querySelectorAll('h1, h2, h3, .cio-lp-hero-title, .cio-lp-section-title');
+          var subs = document.querySelectorAll('.cio-lp-hero-sub, .cio-lp-section-sub');
+          var buttons = document.querySelectorAll('.cio-lp-btn-primary, .cio-lp-btn-secondary, button');
+          var videos = document.querySelectorAll('.cio-lp-video-wrapper, .cio-lp-video-section');
+          var forms = document.querySelectorAll('.cio-lp-contact-form, .cio-lp-contact-section');
+          var courses = document.querySelectorAll('.cio-lp-courses-section, .cio-lp-course-card');
+          var sections = document.querySelectorAll('.cio-lp-section, .cio-lp-hero, header.cio-lp-header');
 
+          function attachElement(el, targetType, label) {
+            el.style.cursor = 'pointer';
             el.addEventListener('mouseenter', function() {
-              if (!el.hasAttribute('data-selected')) {
-                el.style.outline = '2px dashed #2563eb';
-                el.style.outlineOffset = '-2px';
+              if (!el.classList.contains('cio-builder-selected')) {
+                el.classList.add('cio-builder-hover');
               }
             });
             el.addEventListener('mouseleave', function() {
-              if (!el.hasAttribute('data-selected')) {
-                el.style.outline = '';
-                el.style.outlineOffset = '';
-              }
+              el.classList.remove('cio-builder-hover');
             });
-
             el.addEventListener('click', function(e) {
               e.stopPropagation();
-              var secId = el.id || (el.classList.contains('cio-lp-hero') ? 'hero' : '');
-              if (secId) {
-                window.parent.postMessage({ type: 'cio-studio:select-section', sectionId: secId }, '*');
+              var sec = el.closest('.cio-lp-section') || el.closest('.cio-lp-hero');
+              var sectionId = sec ? (sec.id || (sec.classList.contains('cio-lp-hero') ? 'hero' : '')) : 'hero';
+              createSelectionBox(el, label);
+              window.parent.postMessage({
+                type: 'cio-studio:element-selected',
+                sectionId: sectionId,
+                targetType: targetType,
+                text: el.innerText || ''
+              }, '*');
+            });
+          }
+
+          headings.forEach(function(h) {
+            var isHero = h.closest('.cio-lp-hero');
+            attachElement(h, 'heading', isHero ? 'Hero Heading 1' : 'Section Title');
+          });
+
+          subs.forEach(function(p) {
+            attachElement(p, 'subtitle', 'Subtitle / Text');
+          });
+
+          buttons.forEach(function(b) {
+            attachElement(b, 'button', 'Action Button');
+          });
+
+          videos.forEach(function(v) {
+            attachElement(v, 'video', 'Video Player');
+          });
+
+          forms.forEach(function(f) {
+            attachElement(f, 'contact', 'Contact Form');
+          });
+
+          sections.forEach(function(s) {
+            s.addEventListener('click', function(e) {
+              if (e.target === s || e.target.classList.contains('cio-lp-container')) {
+                var secId = s.id || (s.classList.contains('cio-lp-hero') ? 'hero' : '');
+                createSelectionBox(s, secId === 'hero' ? 'Hero Section' : 'Section Container');
+                window.parent.postMessage({
+                  type: 'cio-studio:element-selected',
+                  sectionId: secId,
+                  targetType: 'section',
+                  text: ''
+                }, '*');
               }
             });
           });
 
           window.addEventListener('message', function(event) {
-            if (event.data && event.data.type === 'cio-studio:highlight-section') {
-              var targetId = event.data.sectionId;
-              selectables.forEach(function(el) {
-                var isTarget = (el.id === targetId) || (targetId === 'hero' && el.classList.contains('cio-lp-hero'));
-                if (isTarget) {
-                  el.setAttribute('data-selected', 'true');
-                  el.style.outline = '3px solid #2563eb';
-                  el.style.outlineOffset = '-3px';
-                  el.style.boxShadow = '0 0 0 4px rgba(37, 99, 235, 0.2)';
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (event.data && event.data.type === 'cio-studio:set-selection') {
+              var sectionId = event.data.sectionId;
+              var targetType = event.data.targetType;
+
+              if (!sectionId && targetType === 'global') {
+                clearOverlays();
+                return;
+              }
+
+              var target = null;
+              var label = 'Selected';
+
+              if (sectionId === 'hero') {
+                if (targetType === 'heading') {
+                  target = document.querySelector('.cio-lp-hero h1, .cio-lp-hero-title');
+                  label = 'Hero Heading 1';
+                } else if (targetType === 'subtitle') {
+                  target = document.querySelector('.cio-lp-hero p, .cio-lp-hero-sub');
+                  label = 'Hero Subtitle';
                 } else {
-                  el.removeAttribute('data-selected');
-                  el.style.outline = '';
-                  el.style.outlineOffset = '';
-                  el.style.boxShadow = '';
+                  target = document.querySelector('.cio-lp-hero');
+                  label = 'Hero Section';
                 }
-              });
+              } else if (sectionId) {
+                target = document.getElementById(sectionId);
+                label = 'Section';
+              }
+
+              if (target) {
+                createSelectionBox(target, label);
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
             }
           });
         }
 
         if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', setupInteractiveCanvas);
+          document.addEventListener('DOMContentLoaded', setupCanvasInteractions);
         } else {
-          setupInteractiveCanvas();
+          setupCanvasInteractions();
         }
       })();
     </` + `script>
@@ -247,246 +337,59 @@
   });
 </script>
 
-<div class="flex h-full flex-col bg-slate-100 dark:bg-slate-900 select-none">
-  <!-- Viewport & Zoom Toolbar (ClassroomIO standard styling) -->
+<!-- Responsive Canvas Frame -->
+<div
+  class="w-full flex-1 overflow-auto p-4 sm:p-8 flex items-start justify-center"
+  style="background-color: #f8fafc; background-image: radial-gradient(#dbe3ec 1.2px, transparent 1.2px); background-size: 20px 20px;"
+>
+  <!-- Responsive Scaled Container -->
   <div
-    class="flex h-11 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4 dark:border-slate-800 dark:bg-slate-900 z-10"
+    class="transition-all duration-200 ease-out origin-top shrink-0"
+    style="width: {currentSpec.width * zoom}px;"
   >
-    <!-- Viewport Switcher -->
-    <div class="flex items-center gap-2">
-      <div
-        class="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-800 dark:bg-slate-950"
-      >
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-all {viewport ===
-          'desktop'
-            ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
-            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
-          onclick={() => (viewport = 'desktop')}
-          title="Desktop view (1280px)"
-        >
-          <MonitorIcon class="size-3.5" />
-          <span class="hidden sm:inline">Desktop</span>
-        </button>
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-all {viewport ===
-          'tablet'
-            ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
-            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
-          onclick={() => (viewport = 'tablet')}
-          title="Tablet view (768px)"
-        >
-          <TabletIcon class="size-3.5" />
-          <span class="hidden sm:inline">Tablet</span>
-        </button>
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-all {viewport ===
-          'mobile'
-            ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
-            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
-          onclick={() => (viewport = 'mobile')}
-          title="Mobile view (375px)"
-        >
-          <SmartphoneIcon class="size-3.5" />
-          <span class="hidden sm:inline">Mobile</span>
-        </button>
-      </div>
-
-      <span class="hidden md:inline-flex items-center text-[11px] font-medium text-slate-400">
-        {currentSpec.width} × {currentSpec.height}
-      </span>
-    </div>
-
-    <!-- Zoom & Actions Controls (matching Certificate Studio) -->
-    <div class="flex items-center gap-1">
-      <div class="flex items-center border border-slate-200 rounded-md bg-slate-50 dark:border-slate-800 dark:bg-slate-950 overflow-hidden">
-        <button
-          type="button"
-          class="p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-          onclick={handleZoomOut}
-          title="Zoom out"
-        >
-          <ZoomOutIcon size={13} />
-        </button>
-        <button
-          type="button"
-          class="px-2 py-1 text-[11px] font-semibold text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors"
-          onclick={handleZoomReset}
-          title="Click to auto-fit"
-        >
-          {zoomMode === 'fit' ? `Fit (${Math.round(activeScale * 100)}%)` : `${Math.round(activeScale * 100)}%`}
-        </button>
-        <button
-          type="button"
-          class="p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-          onclick={handleZoomIn}
-          title="Zoom in"
-        >
-          <ZoomInIcon size={13} />
-        </button>
-      </div>
-
-      <button
-        type="button"
-        class="hidden sm:flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 transition-colors {zoomMode === 'fit' ? 'border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400' : ''}"
-        onclick={handleZoomReset}
-        title="Auto-fit to canvas width"
-      >
-        <Maximize2Icon size={12} />
-        <span>Fit</span>
-      </button>
-
-      <button
-        type="button"
-        class="hidden lg:flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 transition-colors {zoomMode === 'manual' && manualZoom === 1 ? 'border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400' : ''}"
-        onclick={() => handleSetZoomPreset(1)}
-        title="100% true scale"
-      >
-        <span>100%</span>
-      </button>
-
-      <button
-        type="button"
-        class="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 transition-colors"
-        onclick={() => (isFullPreviewOpen = true)}
-        title="Fullscreen preview"
-      >
-        <EyeIcon size={12} />
-        <span class="hidden sm:inline">Fullscreen</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Responsive Canvas Stage with Studio Dot Grid -->
-  <div
-    class="flex-1 overflow-auto p-4 sm:p-8 flex items-start justify-center"
-    style="background-color: #f8fafc; background-image: radial-gradient(#dbe3ec 1.2px, transparent 1.2px); background-size: 20px 20px;"
-    bind:clientWidth={stageWidth}
-    bind:clientHeight={stageHeight}
-  >
-    <!-- Scaled Bounding Wrapper -->
+    <!-- Scaled Inner Browser Mockup -->
     <div
-      class="transition-all duration-150 ease-out origin-top shrink-0"
-      style="width: {currentSpec.width * activeScale}px; height: {currentSpec.height * activeScale}px;"
+      class="origin-top-left transition-transform duration-200 ease-out overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+      style="width: {currentSpec.width}px; transform: scale({zoom}); min-height: 820px; box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.25);"
     >
-      <!-- Scaled Inner Frame -->
+      <!-- Browser Top Navigation Chrome -->
       <div
-        class="origin-top-left transition-transform duration-150 ease-out"
-        style="width: {currentSpec.width}px; height: {currentSpec.height}px; transform: scale({activeScale});"
+        class="flex h-10 shrink-0 items-center justify-between border-b border-slate-200 bg-slate-100/90 px-4 dark:border-slate-800 dark:bg-slate-900/90 backdrop-blur"
       >
-        {#if viewport === 'desktop'}
-          <!-- Desktop Browser Mockup -->
-          <div
-            class="flex h-full w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
-            style="box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);"
-          >
-            <!-- Browser Header Bar -->
-            <div
-              class="flex h-10 shrink-0 items-center justify-between border-b border-slate-200 bg-slate-100/90 px-4 dark:border-slate-800 dark:bg-slate-900/90 backdrop-blur"
-            >
-              <!-- Window Traffic Light Dots -->
-              <div class="flex items-center gap-1.5">
-                <span class="size-3 rounded-full bg-[#ff5f56] border border-[#e0443e]"></span>
-                <span class="size-3 rounded-full bg-[#ffbd2e] border border-[#dea123]"></span>
-                <span class="size-3 rounded-full bg-[#27c93f] border border-[#1aab29]"></span>
-              </div>
+        <!-- Traffic Light Window Controls -->
+        <div class="flex items-center gap-1.5">
+          <span class="size-3 rounded-full bg-[#ff5f56] border border-[#e0443e]"></span>
+          <span class="size-3 rounded-full bg-[#ffbd2e] border border-[#dea123]"></span>
+          <span class="size-3 rounded-full bg-[#27c93f] border border-[#1aab29]"></span>
+        </div>
 
-              <!-- Address Bar -->
-              <div
-                class="flex w-96 max-w-sm items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 font-mono"
-              >
-                <LockIcon class="size-3 text-slate-400" />
-                <span class="truncate">https://{organization.slug || 'academy'}.classroomio.com</span>
-              </div>
+        <!-- Centered URL bar -->
+        <div
+          class="flex w-96 max-w-sm items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 font-mono"
+        >
+          <LockIcon class="size-3 text-slate-400" />
+          <span class="truncate">https://{organization.slug || 'coursera-test'}.classroomio.com</span>
+        </div>
 
-              <div class="w-12"></div>
-            </div>
+        <div class="w-12"></div>
+      </div>
 
-            <!-- Iframe Container -->
-            <div class="flex-1 overflow-hidden bg-white dark:bg-slate-950">
-              <iframe
-                bind:this={desktopIframe}
-                title="Landing Page Desktop Preview"
-                srcdoc={fullHtml}
-                sandbox="allow-scripts allow-same-origin"
-                class="h-full w-full border-none"
-                onload={() => syncHighlight(selectedSectionId)}
-              ></iframe>
-            </div>
-          </div>
-
-        {:else if viewport === 'tablet'}
-          <!-- Tablet Mockup Frame -->
-          <div
-            class="flex h-full w-full flex-col overflow-hidden rounded-[28px] border-[10px] border-slate-800 bg-slate-900 shadow-2xl dark:border-slate-800"
-            style="box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);"
-          >
-            <!-- Tablet Top Bar with Camera -->
-            <div class="flex h-6 shrink-0 items-center justify-center bg-slate-900">
-              <div class="size-2 rounded-full bg-slate-700"></div>
-            </div>
-
-            <!-- Tablet Browser Address Bar -->
-            <div class="flex h-9 shrink-0 items-center justify-center border-b border-slate-200 bg-slate-100 px-4 dark:border-slate-800 dark:bg-slate-900">
-              <div
-                class="flex w-80 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 font-mono"
-              >
-                <LockIcon class="size-2.5 text-slate-400" />
-                <span class="truncate">https://{organization.slug || 'academy'}.classroomio.com</span>
-              </div>
-            </div>
-
-            <!-- Iframe Container -->
-            <div class="flex-1 overflow-hidden bg-white dark:bg-slate-950">
-              <iframe
-                bind:this={tabletIframe}
-                title="Landing Page Tablet Preview"
-                srcdoc={fullHtml}
-                sandbox="allow-scripts allow-same-origin"
-                class="h-full w-full border-none"
-                onload={() => syncHighlight(selectedSectionId)}
-              ></iframe>
-            </div>
-          </div>
-
-        {:else}
-          <!-- Mobile Phone Mockup Frame -->
-          <div
-            class="flex h-full w-full flex-col overflow-hidden rounded-[44px] border-[10px] border-slate-900 bg-slate-900 shadow-2xl dark:border-slate-800"
-            style="box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.4);"
-          >
-            <!-- Phone Dynamic Island Notch -->
-            <div class="flex h-7 shrink-0 items-center justify-center bg-slate-900">
-              <div class="h-3.5 w-24 rounded-full bg-slate-950"></div>
-            </div>
-
-            <!-- Iframe Container -->
-            <div class="flex-1 overflow-hidden bg-white dark:bg-slate-950">
-              <iframe
-                bind:this={mobileIframe}
-                title="Landing Page Mobile Preview"
-                srcdoc={fullHtml}
-                sandbox="allow-scripts allow-same-origin"
-                class="h-full w-full border-none"
-                onload={() => syncHighlight(selectedSectionId)}
-              ></iframe>
-            </div>
-
-            <!-- Phone Home Indicator Bar -->
-            <div class="flex h-5 shrink-0 items-center justify-center bg-slate-900">
-              <div class="h-1 w-28 rounded-full bg-slate-600/80"></div>
-            </div>
-          </div>
-        {/if}
+      <!-- Iframe Rendering Engine -->
+      <div class="w-full min-h-[780px] bg-white dark:bg-slate-950">
+        <iframe
+          bind:this={canvasIframe}
+          title="Landing Page Canvas Viewport"
+          srcdoc={fullHtml}
+          sandbox="allow-scripts allow-same-origin"
+          class="h-[880px] w-full border-none"
+          onload={syncSelectionToIframe}
+        ></iframe>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Fullscreen Preview Modal (matching Certificate Studio preview modal) -->
+<!-- Fullscreen Preview Modal -->
 {#if isFullPreviewOpen}
   <div
     class="fixed inset-0 z-50 flex flex-col bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150"
@@ -497,48 +400,12 @@
       if (e.key === 'Escape') isFullPreviewOpen = false;
     }}
   >
-    <!-- Modal Header -->
     <div class="flex h-14 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900/90 px-6 text-white">
       <div class="flex items-center gap-3">
-        <h3 class="text-sm font-bold tracking-tight text-white">{rendered.meta.title || 'Landing Page Preview'}</h3>
+        <h3 class="text-sm font-bold text-white">{rendered.meta.title || 'Landing Page Preview'}</h3>
         <span class="rounded bg-blue-600/30 px-2 py-0.5 text-[10px] font-semibold text-blue-300">Live Preview</span>
       </div>
 
-      <!-- Device Switcher inside Modal -->
-      <div class="flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950 p-0.5">
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-all {viewport === 'desktop'
-            ? 'bg-slate-800 text-white'
-            : 'text-slate-400 hover:text-white'}"
-          onclick={() => (viewport = 'desktop')}
-        >
-          <MonitorIcon class="size-3.5" />
-          <span>Desktop</span>
-        </button>
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-all {viewport === 'tablet'
-            ? 'bg-slate-800 text-white'
-            : 'text-slate-400 hover:text-white'}"
-          onclick={() => (viewport = 'tablet')}
-        >
-          <TabletIcon class="size-3.5" />
-          <span>Tablet</span>
-        </button>
-        <button
-          type="button"
-          class="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-all {viewport === 'mobile'
-            ? 'bg-slate-800 text-white'
-            : 'text-slate-400 hover:text-white'}"
-          onclick={() => (viewport = 'mobile')}
-        >
-          <SmartphoneIcon class="size-3.5" />
-          <span>Mobile</span>
-        </button>
-      </div>
-
-      <!-- Close button -->
       <button
         type="button"
         class="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 hover:text-white transition-colors"
@@ -549,14 +416,9 @@
       </button>
     </div>
 
-    <!-- Modal Content -->
     <div class="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-8">
       <div
-        class="h-full transition-all duration-200 overflow-hidden bg-white shadow-2xl {viewport === 'mobile'
-          ? 'w-[375px] rounded-[36px] border-[8px] border-slate-800'
-          : viewport === 'tablet'
-            ? 'w-[768px] rounded-[24px] border-[8px] border-slate-800'
-            : 'w-full max-w-[1280px] rounded-xl border border-slate-800'}"
+        class="h-full w-full max-w-[1280px] rounded-xl border border-slate-800 overflow-hidden bg-white shadow-2xl"
       >
         <iframe
           bind:this={modalIframe}
@@ -564,7 +426,6 @@
           srcdoc={fullHtml}
           sandbox="allow-scripts allow-same-origin"
           class="h-full w-full border-none"
-          onload={() => syncHighlight(selectedSectionId)}
         ></iframe>
       </div>
     </div>
