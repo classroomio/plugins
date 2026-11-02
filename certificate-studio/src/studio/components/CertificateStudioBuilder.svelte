@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from "svelte";
+  import { onMount, onDestroy, untrack } from "svelte";
   import Loader2 from "@lucide/svelte/icons/loader-2";
   import X from "@lucide/svelte/icons/x";
   import {
@@ -90,9 +90,74 @@
   let selectedTool = $state<ToolCategory>("borders");
   let selectedElement = $state<StudioElementId | null>("border");
 
+  let undoStack = $state<string[]>([]);
+  let redoStack = $state<string[]>([]);
+  let lastRecordedSnapshot = "";
+  let isRestoringHistory = false;
+  let historyDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function recordHistory() {
+    if (isRestoringHistory) return;
+    const current = JSON.stringify({ name: templateName, design });
+    if (current === lastRecordedSnapshot) return;
+
+    undoStack = [...undoStack.slice(-30), current];
+    redoStack = [];
+    lastRecordedSnapshot = current;
+  }
+
+  function handleUndo() {
+    if (undoStack.length <= 1) return;
+    isRestoringHistory = true;
+    try {
+      const current = undoStack.pop()!;
+      redoStack = [...redoStack, current];
+      const previous = undoStack[undoStack.length - 1];
+      if (previous) {
+        const snapshot = JSON.parse(previous);
+        templateName = snapshot.name;
+        design = createStudioDesign(snapshot.design);
+        lastRecordedSnapshot = previous;
+      }
+    } finally {
+      isRestoringHistory = false;
+    }
+  }
+
+  function handleRedo() {
+    if (redoStack.length === 0) return;
+    isRestoringHistory = true;
+    try {
+      const next = redoStack.pop()!;
+      undoStack = [...undoStack, next];
+      const snapshot = JSON.parse(next);
+      templateName = snapshot.name;
+      design = createStudioDesign(snapshot.design);
+      lastRecordedSnapshot = next;
+    } finally {
+      isRestoringHistory = false;
+    }
+  }
+
+  $effect(() => {
+    const _snapshot = JSON.stringify({ name: templateName, design });
+    void _snapshot;
+
+    if (isRestoringHistory) return;
+    if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
+    historyDebounceTimer = setTimeout(() => {
+      recordHistory();
+    }, 300);
+  });
+
   function handleSelectElement(element: StudioElementId | null) {
     selectedElement = element;
     if (!element) return;
+
+    if (element.startsWith("shape-")) {
+      selectedTool = "shapes";
+      return;
+    }
 
     if (["header", "title", "subtitle", "recipient", "date"].includes(element))
       selectedTool = "typography";
@@ -107,6 +172,11 @@
 
   function handleSelectTool(tool: ToolCategory) {
     selectedTool = tool;
+    if (tool === "shapes") {
+      const firstShape = design.shapes?.[0];
+      selectedElement = firstShape ? firstShape.id : null;
+      return;
+    }
     if (tool === "typography") selectedElement = "title";
     else if (tool === "layout") selectedElement = "course";
     else if (tool === "badges") selectedElement = "badge";
@@ -150,6 +220,8 @@
     };
   }
 
+  let handleKeyDownListener: ((e: KeyboardEvent) => void) | null = null;
+
   onMount(async () => {
     zoom = calculateAutoFitZoom();
 
@@ -173,6 +245,80 @@
     }
 
     savedSnapshot = JSON.stringify({ name: templateName, design });
+    lastRecordedSnapshot = savedSnapshot;
+    undoStack = [savedSnapshot];
+
+    function handleKeyDown(e: KeyboardEvent) {
+      const isInput =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      if (!isInput && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
+        if (selectedElement?.startsWith("shape-")) {
+          e.preventDefault();
+          const shape = design.shapes?.find((s) => s.id === selectedElement);
+          if (shape) {
+            const dup = {
+              ...JSON.parse(JSON.stringify(shape)),
+              id: `shape-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+              frame: {
+                ...shape.frame,
+                x: Math.min(1100 - shape.frame.width, shape.frame.x + 20),
+                y: Math.min(780 - shape.frame.height, shape.frame.y + 20),
+              },
+              zIndex: (design.shapes?.length ?? 0) + 1,
+            };
+            design.shapes = [...(design.shapes ?? []), dup];
+            handleSelectElement(dup.id);
+          }
+        }
+        return;
+      }
+
+      if (
+        !isInput &&
+        (e.key === "Backspace" || e.key === "Delete") &&
+        selectedElement?.startsWith("shape-")
+      ) {
+        e.preventDefault();
+        design.shapes = (design.shapes ?? []).filter(
+          (s) => s.id !== selectedElement,
+        );
+        handleSelectElement(null);
+        return;
+      }
+
+      if (e.key === "Escape") {
+        handleSelectElement(null);
+      }
+    }
+
+    handleKeyDownListener = handleKeyDown;
+    window.addEventListener("keydown", handleKeyDownListener);
+  });
+
+  onDestroy(() => {
+    if (typeof window !== "undefined" && handleKeyDownListener) {
+      window.removeEventListener("keydown", handleKeyDownListener);
+    }
+    if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
   });
 
   const previewData: CertificatePreviewData = $derived({
@@ -266,6 +412,10 @@
       bind:templateName
       {isSaving}
       {hasUnsavedChanges}
+      canUndo={undoStack.length > 1}
+      canRedo={redoStack.length > 0}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
       onBack={handleBack}
       onPreview={() => (isPreviewModalOpen = true)}
       onSave={handleSave}

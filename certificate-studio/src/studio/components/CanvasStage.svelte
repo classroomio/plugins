@@ -10,12 +10,19 @@
   import Hash from "@lucide/svelte/icons/hash";
   import PenTool from "@lucide/svelte/icons/pen-tool";
   import Palette from "@lucide/svelte/icons/palette";
+  import Shapes from "@lucide/svelte/icons/shapes";
+  import Plus from "@lucide/svelte/icons/plus";
+  import Circle from "@lucide/svelte/icons/circle";
+  import Minus from "@lucide/svelte/icons/minus";
+  import Frame from "@lucide/svelte/icons/frame";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import {
     CERTIFICATE_HEIGHT,
     CERTIFICATE_WIDTH,
     renderCertificatePreviewDocument,
     type CertificatePreviewData,
     type CertificateDesignV1,
+    type CertificateShapeObject,
   } from "../../kit";
   import type { ToolCategory, StudioElementId } from "../../shared/types";
   import CanvasElementZone from "./CanvasElementZone.svelte";
@@ -161,6 +168,18 @@
       return interactionRect;
     }
 
+    if (typeof id === "string" && id.startsWith("shape-")) {
+      const shape = design.shapes?.find((s) => s.id === id);
+      if (shape) {
+        return {
+          left: shape.frame.x,
+          top: shape.frame.y,
+          width: shape.frame.width,
+          height: shape.frame.height,
+        };
+      }
+    }
+
     const custom = design.elements?.[id];
     if (
       custom?.positionMode === "custom" &&
@@ -170,18 +189,21 @@
       return {
         left: custom.x,
         top: custom.y,
-        width: custom.width ?? DEFAULT_RECTS[id]?.width ?? 120,
-        height: custom.height ?? DEFAULT_RECTS[id]?.height ?? 40,
+        width: custom.width ?? DEFAULT_RECTS[id as keyof typeof DEFAULT_RECTS]?.width ?? 120,
+        height: custom.height ?? DEFAULT_RECTS[id as keyof typeof DEFAULT_RECTS]?.height ?? 40,
       };
     }
     return (
       measuredRects[id] ??
-      DEFAULT_RECTS[id] ?? { left: 100, top: 100, width: 200, height: 50 }
+      DEFAULT_RECTS[id as keyof typeof DEFAULT_RECTS] ?? { left: 100, top: 100, width: 200, height: 50 }
     );
   }
 
+  let isShapeMenuOpen = $state(false);
   let draggingElement = $state<StudioElementId | null>(null);
   let resizingElement = $state<StudioElementId | null>(null);
+  let rotatingElement = $state<StudioElementId | null>(null);
+  let rotateCenter = { x: 0, y: 0 };
   let resizeDirection = $state<
     "nw" | "ne" | "sw" | "se" | "top" | "bottom" | "left" | "right"
   >("se");
@@ -206,7 +228,13 @@
 
     const deltaX = rect.left - dragStartRect.left;
     const deltaY = rect.top - dragStartRect.top;
-    element.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+    if (typeof id === "string" && id.startsWith("shape-")) {
+      const shape = design.shapes?.find((s) => s.id === id);
+      const rotation = shape?.frame.rotation ?? 0;
+      element.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${rotation}deg)`;
+    } else {
+      element.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+    }
 
     if (resizingElement) {
       element.style.width = `${rect.width}px`;
@@ -218,6 +246,23 @@
     id: StudioElementId,
     layout: { x: number; y: number; width: number; height: number },
   ) {
+    if (typeof id === "string" && id.startsWith("shape-")) {
+      design.shapes = (design.shapes ?? []).map((s) => {
+        if (s.id !== id) return s;
+        return {
+          ...s,
+          frame: {
+            ...s.frame,
+            x: layout.x,
+            y: layout.y,
+            width: layout.width,
+            height: layout.height,
+          },
+        };
+      });
+      return;
+    }
+
     design.elements = {
       ...design.elements,
       [id]: {
@@ -244,6 +289,32 @@
   }
 
   function handlePointerMove(e: PointerEvent) {
+    if (rotatingElement) {
+      const canvasEl = iframeElement?.parentElement;
+      if (!canvasEl) return;
+      const canvasRect = canvasEl.getBoundingClientRect();
+      const pointerCanvasX = (e.clientX - canvasRect.left) / zoom;
+      const pointerCanvasY = (e.clientY - canvasRect.top) / zoom;
+
+      const dx = pointerCanvasX - rotateCenter.x;
+      const dy = pointerCanvasY - rotateCenter.y;
+      let angleDeg = Math.round((Math.atan2(dy, dx) * 180) / Math.PI) + 90;
+
+      while (angleDeg > 180) angleDeg -= 360;
+      while (angleDeg <= -180) angleDeg += 360;
+
+      if (e.shiftKey) {
+        angleDeg = Math.round(angleDeg / 15) * 15;
+      }
+
+      design.shapes = (design.shapes ?? []).map((s) =>
+        s.id === rotatingElement
+          ? { ...s, frame: { ...s.frame, rotation: angleDeg } }
+          : s,
+      );
+      return;
+    }
+
     if (resizingElement) {
       const deltaX = (e.clientX - dragStartPointer.x) / zoom;
       const deltaY = (e.clientY - dragStartPointer.y) / zoom;
@@ -331,6 +402,7 @@
 
     draggingElement = null;
     resizingElement = null;
+    rotatingElement = null;
     interactionRect = null;
     snapGuideX = null;
     snapGuideY = null;
@@ -361,12 +433,32 @@
 
     draggingElement = null;
     resizingElement = null;
+    rotatingElement = null;
     interactionRect = null;
     snapGuideX = null;
     snapGuideY = null;
     window.removeEventListener("pointermove", handlePointerMove);
     window.removeEventListener("pointerup", handlePointerUp);
     window.removeEventListener("pointercancel", handlePointerCancel);
+  }
+
+  function handleStartRotate(e: PointerEvent, id: StudioElementId) {
+    if (e.button !== 0 || draggingElement || resizingElement || rotatingElement) return;
+
+    e.preventDefault();
+    onSelectElement(id);
+    onSelectTool("shapes");
+    rotatingElement = id;
+
+    const rect = getRect(id);
+    rotateCenter = {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerCancel);
   }
 
   function handleStartResize(
@@ -417,11 +509,73 @@
   }
 
   function handleDelete(id: StudioElementId) {
+    if (typeof id === "string" && id.startsWith("shape-")) {
+      design.shapes = (design.shapes ?? []).filter((s) => s.id !== id);
+      onSelectElement(null);
+      return;
+    }
     design.elements = {
       ...design.elements,
       [id]: { ...design.elements?.[id], enabled: false },
     };
     onSelectElement(null);
+  }
+
+  function addShape(shapeType: "rectangle" | "ellipse" | "line" | "frame") {
+    const newShape: CertificateShapeObject = {
+      id: `shape-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      objectType: "shape",
+      shape: shapeType,
+      frame: {
+        x: shapeType === "line" ? 250 : 380,
+        y: shapeType === "line" ? 390 : 280,
+        width: shapeType === "line" ? 600 : shapeType === "ellipse" ? 180 : 260,
+        height: shapeType === "line" ? 4 : shapeType === "ellipse" ? 180 : 160,
+        rotation: 0,
+      },
+      fill:
+        shapeType === "line" || shapeType === "frame"
+          ? { type: "none" }
+          : { type: "solid", color: "#e2e8f0" },
+      stroke:
+        shapeType === "line"
+          ? { color: "#0f172a", width: 2, style: "solid" }
+          : shapeType === "frame"
+            ? { color: "#2563eb", width: 3, style: "solid" }
+            : null,
+      borderRadius: shapeType === "rectangle" ? 12 : 0,
+      opacity: 1,
+      locked: false,
+      zIndex: (design.shapes?.length ?? 0) + 5,
+    };
+    design.shapes = [...(design.shapes ?? []), newShape];
+    onSelectElement(newShape.id);
+    onSelectTool("shapes");
+  }
+
+  function handleDuplicateShape(id: StudioElementId) {
+    const shape = design.shapes?.find((s) => s.id === id);
+    if (!shape) return;
+
+    const duplicated: CertificateShapeObject = {
+      ...JSON.parse(JSON.stringify(shape)),
+      id: `shape-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      frame: {
+        ...shape.frame,
+        x: Math.min(CERTIFICATE_WIDTH - shape.frame.width, shape.frame.x + 20),
+        y: Math.min(CERTIFICATE_HEIGHT - shape.frame.height, shape.frame.y + 20),
+      },
+      zIndex: (design.shapes?.length ?? 0) + 1,
+    };
+    design.shapes = [...(design.shapes ?? []), duplicated];
+    onSelectElement(duplicated.id);
+    onSelectTool("shapes");
+  }
+
+  function handleToggleLockShape(id: StudioElementId) {
+    design.shapes = (design.shapes ?? []).map((s) =>
+      s.id === id ? { ...s, locked: !s.locked } : s,
+    );
   }
 
   onDestroy(() => {
@@ -483,6 +637,7 @@
     { id: "layout", label: "Layout", icon: Layout },
     { id: "borders", label: "Borders", icon: Square },
     { id: "typography", label: "Typography", icon: Type },
+    { id: "shapes", label: "Shapes", icon: Shapes },
     { id: "badges", label: "Badges", icon: Award },
     { id: "qrcode", label: "QR Code", icon: Hash },
     { id: "signatories", label: "Signatories", icon: PenTool },
@@ -492,9 +647,75 @@
 
 <div class="stage-viewport">
   <div class="canvas-toolbar">
-    <span
-      ><strong>CANVAS</strong> (A4 Landscape: 1100 × 780)&nbsp;&nbsp; 297mm × 210mm</span
-    >
+    <div class="toolbar-left">
+      <span
+        ><strong>CANVAS</strong> (A4 Landscape: 1100 × 780)&nbsp;&nbsp; 297mm × 210mm</span
+      >
+      <div class="shape-picker-container">
+        <button
+          type="button"
+          class="add-shape-btn"
+          title="Add vector shape layer"
+          onclick={() => (isShapeMenuOpen = !isShapeMenuOpen)}
+        >
+          <Plus size={14} />
+          <span>Add Shape</span>
+          <ChevronDown size={12} />
+        </button>
+
+        {#if isShapeMenuOpen}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="shape-menu-backdrop" onclick={() => (isShapeMenuOpen = false)}></div>
+          <div class="shape-dropdown-menu">
+            <button
+              type="button"
+              class="shape-option-btn"
+              onclick={() => {
+                addShape("rectangle");
+                isShapeMenuOpen = false;
+              }}
+            >
+              <Square size={14} />
+              <span>Rectangle</span>
+            </button>
+            <button
+              type="button"
+              class="shape-option-btn"
+              onclick={() => {
+                addShape("ellipse");
+                isShapeMenuOpen = false;
+              }}
+            >
+              <Circle size={14} />
+              <span>Ellipse / Circle</span>
+            </button>
+            <button
+              type="button"
+              class="shape-option-btn"
+              onclick={() => {
+                addShape("line");
+                isShapeMenuOpen = false;
+              }}
+            >
+              <Minus size={14} />
+              <span>Horizontal Line</span>
+            </button>
+            <button
+              type="button"
+              class="shape-option-btn"
+              onclick={() => {
+                addShape("frame");
+                isShapeMenuOpen = false;
+              }}
+            >
+              <Frame size={14} />
+              <span>Decorative Frame</span>
+            </button>
+          </div>
+        {/if}
+      </div>
+    </div>
     <div class="zoom-actions">
       <button
         type="button"
@@ -539,6 +760,38 @@
               style:top="{snapGuideY}px"
             ></div>
           {/if}
+
+          {#each (design.shapes ?? []) as shape (shape.id)}
+            {@const rect = getRect(shape.id)}
+            <CanvasElementZone
+              id={shape.id}
+              label={shape.shape.charAt(0).toUpperCase() + shape.shape.slice(1)}
+              tool="shapes"
+              selected={selectedElement === shape.id}
+              hovered={hoveredZone === shape.id}
+              positionMode="custom"
+              left={rect.left}
+              top={rect.top}
+              width={rect.width}
+              height={rect.height}
+              rotation={shape.frame.rotation}
+              locked={shape.locked}
+              canRotate={true}
+              onSelect={(id, tool) => {
+                onSelectElement(id);
+                onSelectTool(tool);
+              }}
+              onHover={(id) => (hoveredZone = id)}
+              onStartDrag={handleStartDrag}
+              onStartRotate={handleStartRotate}
+              onStartResize={handleStartResize}
+              onCenterHorizontal={handleCenterHorizontal}
+              onCenterVertical={handleCenterVertical}
+              onDuplicate={handleDuplicateShape}
+              onToggleLock={handleToggleLockShape}
+              onDelete={handleDelete}
+            />
+          {/each}
 
           {#each getZoneDefinitions() as zone}
             {@const rect = getRect(zone.id)}
@@ -613,6 +866,79 @@
 
   .canvas-toolbar strong {
     color: #64748b;
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .shape-picker-container {
+    position: relative;
+  }
+
+  .add-shape-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .add-shape-btn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+
+  .shape-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 140;
+  }
+
+  .shape-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 170px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    padding: 4px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .shape-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #334155;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .shape-option-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
   }
 
   .zoom-actions {

@@ -89,6 +89,48 @@ export const ZCertificateCopyOverridesV1 = z.object({
   organizationName: z.string().trim().max(128).optional()
 });
 
+export const ZGradientStop = z.object({
+  offset: z.number().min(0).max(1),
+  color: ZHexColor
+});
+
+export const ZCertificateShapeFill = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('none') }),
+  z.object({ type: z.literal('solid'), color: ZHexColor }),
+  z.object({
+    type: z.literal('linear-gradient'),
+    angle: z.number().min(0).max(360).default(90),
+    stops: z.array(ZGradientStop).min(2).max(10)
+  })
+]);
+
+export const ZCertificateShapeStroke = z.object({
+  color: ZHexColor.default('#000000'),
+  width: z.number().min(0).max(50).default(1),
+  style: z.enum(['solid', 'dashed']).default('solid')
+});
+
+export const ZCertificateShapeFrame = z.object({
+  x: z.number().min(0).max(2000),
+  y: z.number().min(0).max(2000),
+  width: z.number().min(1).max(2000),
+  height: z.number().min(1).max(2000),
+  rotation: z.number().min(-360).max(360).default(0)
+});
+
+export const ZCertificateShapeObject = z.object({
+  id: z.string().trim().min(1).max(64),
+  objectType: z.literal('shape').default('shape'),
+  shape: z.enum(['rectangle', 'ellipse', 'line', 'frame']).default('rectangle'),
+  frame: ZCertificateShapeFrame,
+  fill: ZCertificateShapeFill.default({ type: 'solid', color: '#e2e8f0' }),
+  stroke: ZCertificateShapeStroke.nullable().default(null),
+  borderRadius: z.number().min(0).max(500).default(0),
+  opacity: z.number().min(0).max(1).default(1),
+  locked: z.boolean().default(false),
+  zIndex: z.number().int().min(0).max(100).default(5)
+});
+
 export const ZCertificateDesignV1 = z.object({
   version: z.literal(1).default(1),
   templateId: z.string().trim().min(1).max(64).default('classique'),
@@ -100,6 +142,7 @@ export const ZCertificateDesignV1 = z.object({
   descriptionOverride: z.string().trim().max(1000).optional().default(''),
   idFormat: z.string().trim().max(64).default('CIO-{YYYY}-{RANDOM}'),
   signatories: z.array(ZCertificateSignatoryV1).max(3).default([]),
+  shapes: z.array(ZCertificateShapeObject).default([]),
   elements: z.record(z.string(), ZCertificateElementLayoutV1).optional(),
   border: ZCertificateBorderConfigV1.optional(),
   typography: ZCertificateTypographyConfigV1.optional(),
@@ -117,4 +160,9 @@ export type TCertificateBadgeConfigV1 = z.infer<typeof ZCertificateBadgeConfigV1
 export type TCertificateQrCodeConfigV1 = z.infer<typeof ZCertificateQrCodeConfigV1>;
 export type TCertificateElementLayoutV1 = z.infer<typeof ZCertificateElementLayoutV1>;
 export type TCertificateCopyOverridesV1 = z.infer<typeof ZCertificateCopyOverridesV1>;
+export type TGradientStop = z.infer<typeof ZGradientStop>;
+export type TCertificateShapeFill = z.infer<typeof ZCertificateShapeFill>;
+export type TCertificateShapeStroke = z.infer<typeof ZCertificateShapeStroke>;
+export type TCertificateShapeFrame = z.infer<typeof ZCertificateShapeFrame>;
+export type TCertificateShapeObject = z.infer<typeof ZCertificateShapeObject>;
 export type TCertificateDesignV1 = z.infer<typeof ZCertificateDesignV1>;

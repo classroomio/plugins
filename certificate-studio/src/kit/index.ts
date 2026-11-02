@@ -22,8 +22,13 @@ export {
   ZCertificateDesignV1,
   ZCertificateElementLayoutV1,
   ZCertificateQrCodeConfigV1,
+  ZCertificateShapeFrame,
+  ZCertificateShapeFill,
+  ZCertificateShapeObject,
+  ZCertificateShapeStroke,
   ZCertificateSignatoryV1,
   ZCertificateTypographyConfigV1,
+  ZGradientStop,
   ZHexColor,
   ZSafeUrl,
   type TCertificateBadgeConfigV1,
@@ -33,8 +38,13 @@ export {
   type TCertificateDesignV1,
   type TCertificateElementLayoutV1,
   type TCertificateQrCodeConfigV1,
+  type TCertificateShapeFill,
+  type TCertificateShapeFrame,
+  type TCertificateShapeObject,
+  type TCertificateShapeStroke,
   type TCertificateSignatoryV1,
-  type TCertificateTypographyConfigV1
+  type TCertificateTypographyConfigV1,
+  type TGradientStop
 } from './schema';
 
 export type {
@@ -47,9 +57,14 @@ export type {
   CertificatePreviewData,
   CertificatePreviewResult,
   CertificateQrCodeConfigV1,
+  CertificateShapeFill,
+  CertificateShapeFrame,
+  CertificateShapeObject,
+  CertificateShapeStroke,
   CertificateSignatoryV1,
   CertificateTemplateId,
   CertificateTypographyConfigV1,
+  GradientStop,
   StarterTemplateMeta
 } from './types';
 

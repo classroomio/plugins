@@ -49,6 +49,7 @@ export const DEFAULT_CERTIFICATE_DESIGN_V1 = {
   subtitle: 'This is proudly presented to',
   descriptionOverride: '',
   idFormat: 'CIO-{YYYY}-{RANDOM}',
+  shapes: [] as const,
   signatories: [
     {
       id: 'sig-1',

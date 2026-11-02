@@ -11,7 +11,8 @@ export type ToolCategory =
   | "badges"
   | "qrcode"
   | "signatories"
-  | "background";
+  | "background"
+  | "shapes";
 
 export type StudioElementId =
   | "header"
@@ -28,7 +29,8 @@ export type StudioElementId =
   | "signatories"
   | "qrCode"
   | "border"
-  | "background";
+  | "background"
+  | (string & {});
 
 export type ResizeDirection =
   | "top"

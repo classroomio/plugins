@@ -4,7 +4,11 @@
   import AlignCenter from "@lucide/svelte/icons/align-center";
   import AlignCenterVertical from "@lucide/svelte/icons/align-center-vertical";
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
+  import RotateCw from "@lucide/svelte/icons/rotate-cw";
   import Trash2 from "@lucide/svelte/icons/trash-2";
+  import Copy from "@lucide/svelte/icons/copy";
+  import Lock from "@lucide/svelte/icons/lock";
+  import Unlock from "@lucide/svelte/icons/unlock";
   import type {
     StudioElementId,
     ToolCategory,
@@ -24,6 +28,9 @@
     top?: number | string;
     width?: number | string;
     height?: number | string;
+    rotation?: number;
+    locked?: boolean;
+    canRotate?: boolean;
     canDelete?: boolean;
     onSelect: (id: StudioElementId, tool: ToolCategory) => void;
     onHover: (id: StudioElementId | null) => void;
@@ -31,7 +38,10 @@
     onCenterVertical?: (id: StudioElementId) => void;
     onResetAuto?: (id: StudioElementId) => void;
     onDelete?: (id: StudioElementId) => void;
+    onDuplicate?: (id: StudioElementId) => void;
+    onToggleLock?: (id: StudioElementId) => void;
     onStartDrag?: (e: PointerEvent, id: StudioElementId) => void;
+    onStartRotate?: (e: PointerEvent, id: StudioElementId) => void;
     onStartResize?: (
       e: PointerEvent,
       id: StudioElementId,
@@ -51,6 +61,9 @@
     top = 0,
     width = 100,
     height = 50,
+    rotation = 0,
+    locked = false,
+    canRotate = false,
     canDelete = true,
     onSelect,
     onHover,
@@ -58,7 +71,10 @@
     onCenterVertical,
     onResetAuto,
     onDelete,
+    onDuplicate,
+    onToggleLock,
     onStartDrag,
+    onStartRotate,
     onStartResize,
     children,
   }: Props = $props();
@@ -66,12 +82,12 @@
   function handlePointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest("button") || target.closest("[data-resize-handle]"))
+    if (target.closest("button") || target.closest("[data-resize-handle]") || target.closest("[data-rotation-handle]"))
       return;
 
     e.preventDefault();
     onSelect(id, tool);
-    if (onStartDrag) {
+    if (!locked && onStartDrag) {
       onStartDrag(e, id);
     }
   }
@@ -118,6 +134,7 @@
   class="zone-container"
   class:is-selected={selected}
   class:is-hovered={hovered}
+  class:is-locked={locked}
   class:is-border={id === 'border'}
   style="left: {typeof left === 'number'
     ? left + 'px'
@@ -125,7 +142,7 @@
     ? top + 'px'
     : top}; width: {typeof width === 'number'
     ? width + 'px'
-    : width}; height: {typeof height === 'number' ? height + 'px' : height};"
+    : width}; height: {typeof height === 'number' ? height + 'px' : height}; transform: rotate({rotation}deg); transform-origin: center center;"
   onpointerdown={handlePointerDown}
   onpointerenter={() => onHover(id)}
   onpointerleave={() => onHover(null)}
@@ -133,14 +150,18 @@
   {#if selected || hovered}
     <div class="toolbar" class:toolbar-bottom={id === "border" || (typeof top === "number" && top < 36)} onpointerdown={(e) => e.stopPropagation()}>
       <span class="label">
-        <GripVertical size={12} />
+        {#if locked}
+          <span class="lock-icon"><Lock size={12} /></span>
+        {:else}
+          <GripVertical size={12} />
+        {/if}
         {label}
         {#if positionMode === "custom"}
           <span class="custom-badge">Custom</span>
         {/if}
       </span>
 
-      {#if onCenterHorizontal}
+      {#if !locked && onCenterHorizontal}
         <button
           type="button"
           class="tool-btn"
@@ -151,7 +172,7 @@
         </button>
       {/if}
 
-      {#if onCenterVertical}
+      {#if !locked && onCenterVertical}
         <button
           type="button"
           class="tool-btn"
@@ -162,7 +183,7 @@
         </button>
       {/if}
 
-      {#if positionMode === "custom" && onResetAuto}
+      {#if !locked && positionMode === "custom" && onResetAuto}
         <button
           type="button"
           class="tool-btn"
@@ -173,7 +194,33 @@
         </button>
       {/if}
 
-      {#if canDelete && onDelete}
+      {#if onDuplicate}
+        <button
+          type="button"
+          class="tool-btn"
+          title="Duplicate"
+          onclick={() => onDuplicate(id)}
+        >
+          <Copy size={13} />
+        </button>
+      {/if}
+
+      {#if onToggleLock}
+        <button
+          type="button"
+          class="tool-btn"
+          title={locked ? "Unlock element" : "Lock element"}
+          onclick={() => onToggleLock(id)}
+        >
+          {#if locked}
+            <Unlock size={13} />
+          {:else}
+            <Lock size={13} />
+          {/if}
+        </button>
+      {/if}
+
+      {#if !locked && canDelete && onDelete}
         <button
           type="button"
           class="tool-btn danger"
@@ -185,19 +232,37 @@
       {/if}
     </div>
 
-    {#each resizeHandles as handle}
+    {#if selected && canRotate && !locked && onStartRotate}
+      <div class="rotation-stem"></div>
       <div
-        data-resize-handle
-        class="resize-handle"
-        class:is-edge={handle.edge}
-        style={handle.style}
+        data-rotation-handle
+        class="rotation-handle"
+        title="Drag to rotate"
         onpointerdown={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          onStartResize?.(e, id, handle.dir);
+          onStartRotate(e, id);
         }}
-      ></div>
-    {/each}
+      >
+        <RotateCw size={10} />
+      </div>
+    {/if}
+
+    {#if !locked}
+      {#each resizeHandles as handle}
+        <div
+          data-resize-handle
+          class="resize-handle"
+          class:is-edge={handle.edge}
+          style={handle.style}
+          onpointerdown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onStartResize?.(e, id, handle.dir);
+          }}
+        ></div>
+      {/each}
+    {/if}
   {/if}
 
   {#if children}
@@ -232,6 +297,62 @@
 
   .zone-container.is-border {
     z-index: 5;
+  }
+
+  .zone-container.is-locked {
+    cursor: default;
+    border-color: rgba(148, 163, 184, 0.5);
+  }
+
+  .zone-container.is-locked.is-selected {
+    border-color: #64748b;
+    background-color: rgba(100, 116, 139, 0.08);
+    box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.2);
+  }
+
+  .lock-icon {
+    color: #fde68a;
+  }
+
+  .rotation-stem {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    width: 1px;
+    height: 18px;
+    background: #d97706;
+    pointer-events: none;
+    z-index: 40;
+  }
+
+  .rotation-handle {
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #d97706;
+    color: #b45309;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    pointer-events: auto;
+    z-index: 41;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+
+  .rotation-handle:hover {
+    background: #fef3c7;
+    transform: translateX(-50%) scale(1.15);
+  }
+
+  .rotation-handle:active {
+    cursor: grabbing;
   }
 
   .toolbar.toolbar-bottom {

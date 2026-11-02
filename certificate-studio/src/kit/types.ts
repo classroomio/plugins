@@ -7,8 +7,13 @@ import type {
   TCertificateDesignV1,
   TCertificateElementLayoutV1,
   TCertificateQrCodeConfigV1,
+  TCertificateShapeFill,
+  TCertificateShapeFrame,
+  TCertificateShapeObject,
+  TCertificateShapeStroke,
   TCertificateSignatoryV1,
-  TCertificateTypographyConfigV1
+  TCertificateTypographyConfigV1,
+  TGradientStop
 } from './schema';
 
 export type CertificateTemplateId = BuiltInCertificateTemplateId | (string & {});
@@ -21,6 +26,11 @@ export type CertificateBadgeConfigV1 = TCertificateBadgeConfigV1;
 export type CertificateQrCodeConfigV1 = TCertificateQrCodeConfigV1;
 export type CertificateElementLayoutV1 = TCertificateElementLayoutV1;
 export type CertificateCopyOverridesV1 = TCertificateCopyOverridesV1;
+export type GradientStop = TGradientStop;
+export type CertificateShapeFill = TCertificateShapeFill;
+export type CertificateShapeStroke = TCertificateShapeStroke;
+export type CertificateShapeFrame = TCertificateShapeFrame;
+export type CertificateShapeObject = TCertificateShapeObject;
 export type CertificateDesignV1 = TCertificateDesignV1;
 
 export interface CertificatePreviewData {

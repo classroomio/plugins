@@ -75,6 +75,7 @@ export function normalizeCertificateDesign(raw: unknown): CertificateDesignV1 {
     idFormat:
       typeof candidate.idFormat === 'string' ? candidate.idFormat.slice(0, 64) : DEFAULT_CERTIFICATE_DESIGN_V1.idFormat,
     signatories,
+    shapes: Array.isArray(candidate.shapes) ? candidate.shapes : [],
     elements: candidate.elements && typeof candidate.elements === 'object' ? candidate.elements : undefined,
     border: candidate.border && typeof candidate.border === 'object' ? candidate.border : undefined,
     typography: candidate.typography && typeof candidate.typography === 'object' ? candidate.typography : undefined,
@@ -91,6 +92,7 @@ export function normalizeCertificateDesign(raw: unknown): CertificateDesignV1 {
 
   return {
     ...DEFAULT_CERTIFICATE_DESIGN_V1,
+    shapes: [],
     signatories: [...DEFAULT_CERTIFICATE_DESIGN_V1.signatories]
   };
 }

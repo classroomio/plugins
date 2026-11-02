@@ -3,6 +3,7 @@
     PALETTE_SWATCHES,
     FONT_OPTIONS,
     type CertificateDesignV1,
+    type CertificateShapeObject,
   } from "../../kit";
   import Layout from "@lucide/svelte/icons/layout";
   import Square from "@lucide/svelte/icons/square";
@@ -13,6 +14,18 @@
   import Palette from "@lucide/svelte/icons/palette";
   import Plus from "@lucide/svelte/icons/plus";
   import Trash2 from "@lucide/svelte/icons/trash-2";
+  import Shapes from "@lucide/svelte/icons/shapes";
+  import Circle from "@lucide/svelte/icons/circle";
+  import Minus from "@lucide/svelte/icons/minus";
+  import Frame from "@lucide/svelte/icons/frame";
+  import Lock from "@lucide/svelte/icons/lock";
+  import Unlock from "@lucide/svelte/icons/unlock";
+  import Copy from "@lucide/svelte/icons/copy";
+  import RotateCw from "@lucide/svelte/icons/rotate-cw";
+  import ArrowUp from "@lucide/svelte/icons/arrow-up";
+  import ArrowDown from "@lucide/svelte/icons/arrow-down";
+  import ChevronsUp from "@lucide/svelte/icons/chevrons-up";
+  import ChevronsDown from "@lucide/svelte/icons/chevrons-down";
   import type {
     OrganizationProfile,
     StudioElementId,
@@ -43,11 +56,143 @@
     { id: "borders", label: "Borders", icon: Square },
     { id: "typography", label: "Typography", icon: Type },
     { id: "layout", label: "Copy & Layout", icon: Layout },
+    { id: "shapes", label: "Shapes", icon: Shapes },
     { id: "badges", label: "Badges", icon: Award },
     { id: "qrcode", label: "QR Code", icon: QrCodeIcon },
     { id: "signatories", label: "Signatories", icon: PenTool },
     { id: "background", label: "Background", icon: Palette },
   ];
+
+  const selectedShape = $derived(
+    design.shapes?.find((s) => s.id === selectedElement) ?? null,
+  );
+
+  function updateSelectedShape(
+    updater: (shape: CertificateShapeObject) => CertificateShapeObject,
+  ) {
+    if (!selectedElement) return;
+    design.shapes = (design.shapes ?? []).map((s) => {
+      if (s.id !== selectedElement) return s;
+      return updater(s);
+    });
+  }
+
+  function updateShapeFrame(
+    field: "x" | "y" | "width" | "height" | "rotation",
+    val: number,
+  ) {
+    updateSelectedShape((s) => ({
+      ...s,
+      frame: {
+        ...s.frame,
+        [field]: val,
+      },
+    }));
+  }
+
+  function centerShapeHorizontal() {
+    if (!selectedShape) return;
+    updateShapeFrame("x", Math.round((1100 - selectedShape.frame.width) / 2));
+  }
+
+  function centerShapeVertical() {
+    if (!selectedShape) return;
+    updateShapeFrame("y", Math.round((780 - selectedShape.frame.height) / 2));
+  }
+
+  function rotateShapeBy(degrees: number) {
+    if (!selectedShape) return;
+    let next = (selectedShape.frame.rotation + degrees) % 360;
+    if (next > 180) next -= 360;
+    if (next <= -180) next += 360;
+    updateShapeFrame("rotation", next);
+  }
+
+  function bringShapeToFront() {
+    if (!selectedElement) return;
+    const maxZ = Math.max(
+      ...(design.shapes ?? []).map((s) => s.zIndex ?? 0),
+      0,
+    );
+    updateSelectedShape((s) => ({ ...s, zIndex: maxZ + 1 }));
+  }
+
+  function sendShapeToBack() {
+    if (!selectedElement) return;
+    const minZ = Math.min(
+      ...(design.shapes ?? []).map((s) => s.zIndex ?? 0),
+      0,
+    );
+    updateSelectedShape((s) => ({ ...s, zIndex: Math.max(0, minZ - 1) }));
+  }
+
+  function bringShapeForward() {
+    updateSelectedShape((s) => ({ ...s, zIndex: (s.zIndex ?? 0) + 1 }));
+  }
+
+  function sendShapeBackward() {
+    updateSelectedShape((s) => ({
+      ...s,
+      zIndex: Math.max(0, (s.zIndex ?? 0) - 1),
+    }));
+  }
+
+  function toggleShapeLock() {
+    updateSelectedShape((s) => ({ ...s, locked: !s.locked }));
+  }
+
+  function duplicateSelectedShape() {
+    if (!selectedShape) return;
+    const dup: CertificateShapeObject = {
+      ...JSON.parse(JSON.stringify(selectedShape)),
+      id: `shape-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      frame: {
+        ...selectedShape.frame,
+        x: Math.min(1100 - selectedShape.frame.width, selectedShape.frame.x + 20),
+        y: Math.min(780 - selectedShape.frame.height, selectedShape.frame.y + 20),
+      },
+      zIndex: (design.shapes?.length ?? 0) + 1,
+    };
+    design.shapes = [...(design.shapes ?? []), dup];
+    onSelectElement(dup.id);
+  }
+
+  function deleteSelectedShape() {
+    if (!selectedElement) return;
+    design.shapes = (design.shapes ?? []).filter((s) => s.id !== selectedElement);
+    onSelectElement(null);
+  }
+
+  function addShape(shapeType: "rectangle" | "ellipse" | "line" | "frame") {
+    const newShape: CertificateShapeObject = {
+      id: `shape-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      objectType: "shape",
+      shape: shapeType,
+      frame: {
+        x: shapeType === "line" ? 250 : 380,
+        y: shapeType === "line" ? 390 : 280,
+        width: shapeType === "line" ? 600 : shapeType === "ellipse" ? 180 : 260,
+        height: shapeType === "line" ? 4 : shapeType === "ellipse" ? 180 : 160,
+        rotation: 0,
+      },
+      fill:
+        shapeType === "line" || shapeType === "frame"
+          ? { type: "none" }
+          : { type: "solid", color: "#e2e8f0" },
+      stroke:
+        shapeType === "line"
+          ? { color: "#0f172a", width: 2, style: "solid" }
+          : shapeType === "frame"
+            ? { color: "#2563eb", width: 3, style: "solid" }
+            : null,
+      borderRadius: shapeType === "rectangle" ? 12 : 0,
+      opacity: 1,
+      locked: false,
+      zIndex: (design.shapes?.length ?? 0) + 5,
+    };
+    design.shapes = [...(design.shapes ?? []), newShape];
+    onSelectElement(newShape.id);
+  }
 
   const REQUIRED_ELEMENT_IDS: ReadonlySet<StudioElementId> = new Set([
     "recipient",
@@ -287,11 +432,538 @@
           {/if}
         </button>
       {/each}
+
+      {#if (design.shapes?.length ?? 0) > 0}
+        <div class="layer-subheading">Shapes</div>
+        {#each (design.shapes ?? []) as shape}
+          <button
+            type="button"
+            class="shape-layer-item"
+            class:active={selectedElement === shape.id}
+            onclick={() => onSelectElement(shape.id)}
+          >
+            <span class="shape-layer-label">
+              <Shapes size={12} />
+              {shape.shape.charAt(0).toUpperCase() + shape.shape.slice(1)}
+            </span>
+            <span class="shape-layer-meta">
+              {#if shape.locked}
+                <span class="locked-icon"><Lock size={11} /></span>
+              {/if}
+              <small>z:{shape.zIndex}</small>
+            </span>
+          </button>
+        {/each}
+      {/if}
     </div>
   </section>
 
   <div class="panel-content">
-    {#if selectedElement && defaultLayouts[selectedElement]}
+    {#if selectedShape}
+      <section class="shape-inspector-card">
+        <div class="shape-inspector-header">
+          <div class="shape-title-badge">
+            {#if selectedShape.shape === 'rectangle'}
+              <Square size={14} />
+            {:else if selectedShape.shape === 'ellipse'}
+              <Circle size={14} />
+            {:else if selectedShape.shape === 'line'}
+              <Minus size={14} />
+            {:else}
+              <Frame size={14} />
+            {/if}
+            <strong>{selectedShape.shape.charAt(0).toUpperCase() + selectedShape.shape.slice(1)}</strong>
+          </div>
+          <div class="shape-header-actions">
+            <button
+              type="button"
+              class="icon-action-btn"
+              title={selectedShape.locked ? "Unlock shape" : "Lock shape"}
+              onclick={toggleShapeLock}
+            >
+              {#if selectedShape.locked}
+                <span class="locked-icon"><Lock size={13} /></span>
+              {:else}
+                <Unlock size={13} />
+              {/if}
+            </button>
+            <button
+              type="button"
+              class="icon-action-btn"
+              title="Duplicate shape"
+              onclick={duplicateSelectedShape}
+            >
+              <Copy size={13} />
+            </button>
+            <button
+              type="button"
+              class="icon-action-btn danger"
+              title="Delete shape"
+              onclick={deleteSelectedShape}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        </div>
+
+        <!-- Frame / Position & Dimensions -->
+        <div class="tool-section">
+          <h4 class="section-title">Dimensions & Transform</h4>
+          <div class="position-grid">
+            <label>
+              <span>X (px)</span>
+              <input
+                type="number"
+                disabled={selectedShape.locked}
+                value={selectedShape.frame.x}
+                oninput={(e) => updateShapeFrame('x', Number((e.target as HTMLInputElement).value))}
+              />
+            </label>
+            <label>
+              <span>Y (px)</span>
+              <input
+                type="number"
+                disabled={selectedShape.locked}
+                value={selectedShape.frame.y}
+                oninput={(e) => updateShapeFrame('y', Number((e.target as HTMLInputElement).value))}
+              />
+            </label>
+            <label>
+              <span>Width (px)</span>
+              <input
+                type="number"
+                min="1"
+                disabled={selectedShape.locked}
+                value={selectedShape.frame.width}
+                oninput={(e) => updateShapeFrame('width', Math.max(1, Number((e.target as HTMLInputElement).value)))}
+              />
+            </label>
+            <label>
+              <span>Height (px)</span>
+              <input
+                type="number"
+                min="1"
+                disabled={selectedShape.locked}
+                value={selectedShape.frame.height}
+                oninput={(e) => updateShapeFrame('height', Math.max(1, Number((e.target as HTMLInputElement).value)))}
+              />
+            </label>
+          </div>
+
+          <div class="field-group mt-2">
+            <div class="flex-between">
+              <label class="field-label" for="shape-rotation">Rotation</label>
+              <span class="field-val-hint">{selectedShape.frame.rotation}°</span>
+            </div>
+            <div class="slider-row">
+              <input
+                id="shape-rotation"
+                type="range"
+                min="-180"
+                max="180"
+                disabled={selectedShape.locked}
+                value={selectedShape.frame.rotation}
+                oninput={(e) => updateShapeFrame('rotation', Number((e.target as HTMLInputElement).value))}
+              />
+              <button
+                type="button"
+                class="small-btn"
+                title="Rotate 90 degrees"
+                disabled={selectedShape.locked}
+                onclick={() => rotateShapeBy(90)}
+              >
+                <RotateCw size={12} /> +90°
+              </button>
+            </div>
+          </div>
+
+          {#if !selectedShape.locked}
+            <div class="position-actions">
+              <button type="button" onclick={centerShapeHorizontal}>Center Horizontally</button>
+              <button type="button" onclick={centerShapeVertical}>Center Vertically</button>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Fill section -->
+        {#if selectedShape.shape !== 'line'}
+          <div class="tool-section">
+            <h4 class="section-title">Fill</h4>
+            <div class="type-selector">
+              <button
+                type="button"
+                class:active={selectedShape.fill.type === 'none'}
+                disabled={selectedShape.locked}
+                onclick={() => updateSelectedShape((s) => ({ ...s, fill: { type: 'none' } }))}
+              >
+                None
+              </button>
+              <button
+                type="button"
+                class:active={selectedShape.fill.type === 'solid'}
+                disabled={selectedShape.locked}
+                onclick={() => updateSelectedShape((s) => ({ ...s, fill: { type: 'solid', color: '#2563eb' } }))}
+              >
+                Solid
+              </button>
+              <button
+                type="button"
+                class:active={selectedShape.fill.type === 'linear-gradient'}
+                disabled={selectedShape.locked}
+                onclick={() =>
+                  updateSelectedShape((s) => ({
+                    ...s,
+                    fill: {
+                      type: 'linear-gradient',
+                      angle: 90,
+                      stops: [
+                        { offset: 0, color: '#3b82f6' },
+                        { offset: 1, color: '#1d4ed8' },
+                      ],
+                    },
+                  }))}
+              >
+                Gradient
+              </button>
+            </div>
+
+            {#if selectedShape.fill.type === 'solid'}
+              <div class="field-group mt-2">
+                <span class="field-label">Fill Color</span>
+                <div class="color-field">
+                  <input
+                    type="color"
+                    class="color-picker"
+                    disabled={selectedShape.locked}
+                    value={selectedShape.fill.color}
+                    oninput={(e) => {
+                      const color = (e.target as HTMLInputElement).value;
+                      updateSelectedShape((s) => ({ ...s, fill: { type: 'solid', color } }));
+                    }}
+                  />
+                  <input
+                    class="field-input color-value"
+                    disabled={selectedShape.locked}
+                    value={selectedShape.fill.color}
+                    oninput={(e) => {
+                      const color = (e.target as HTMLInputElement).value;
+                      if (/^#[0-9a-fA-F]{3,8}$/.test(color)) {
+                        updateSelectedShape((s) => ({ ...s, fill: { type: 'solid', color } }));
+                      }
+                    }}
+                  />
+                </div>
+                <div class="swatches-grid">
+                  {#each PALETTE_SWATCHES.slice(0, 10) as color}
+                    <button
+                      type="button"
+                      class="swatch-btn"
+                      style="background-color: {color};"
+                      disabled={selectedShape.locked}
+                      onclick={() => updateSelectedShape((s) => ({ ...s, fill: { type: 'solid', color } }))}
+                      aria-label="Set fill {color}"
+                    ></button>
+                  {/each}
+                </div>
+              </div>
+            {:else if selectedShape.fill.type === 'linear-gradient'}
+              <div class="field-group mt-2">
+                <div class="flex-between">
+                  <label class="field-label" for="grad-angle">Gradient Angle</label>
+                  <span class="field-val-hint">{selectedShape.fill.angle ?? 90}°</span>
+                </div>
+                <input
+                  id="grad-angle"
+                  type="range"
+                  min="0"
+                  max="360"
+                  disabled={selectedShape.locked}
+                  value={selectedShape.fill.angle ?? 90}
+                  oninput={(e) => {
+                    const angle = Number((e.target as HTMLInputElement).value);
+                    updateSelectedShape((s) => {
+                      if (s.fill.type !== 'linear-gradient') return s;
+                      return { ...s, fill: { ...s.fill, angle } };
+                    });
+                  }}
+                />
+              </div>
+
+              <div class="stops-grid">
+                <div class="stop-col">
+                  <span class="stop-label">Start Color (0%)</span>
+                  <div class="color-field">
+                    <input
+                      type="color"
+                      class="color-picker"
+                      disabled={selectedShape.locked}
+                      value={selectedShape.fill.stops[0]?.color ?? '#3b82f6'}
+                      oninput={(e) => {
+                        const color = (e.target as HTMLInputElement).value;
+                        updateSelectedShape((s) => {
+                          if (s.fill.type !== 'linear-gradient') return s;
+                          const nextStops = [...s.fill.stops];
+                          nextStops[0] = { offset: 0, color };
+                          return { ...s, fill: { ...s.fill, stops: nextStops } };
+                        });
+                      }}
+                    />
+                    <input
+                      class="field-input color-value"
+                      disabled={selectedShape.locked}
+                      value={selectedShape.fill.stops[0]?.color ?? '#3b82f6'}
+                      oninput={(e) => {
+                        const color = (e.target as HTMLInputElement).value;
+                        if (/^#[0-9a-fA-F]{3,8}$/.test(color)) {
+                          updateSelectedShape((s) => {
+                            if (s.fill.type !== 'linear-gradient') return s;
+                            const nextStops = [...s.fill.stops];
+                            nextStops[0] = { offset: 0, color };
+                            return { ...s, fill: { ...s.fill, stops: nextStops } };
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div class="stop-col">
+                  <span class="stop-label">End Color (100%)</span>
+                  <div class="color-field">
+                    <input
+                      type="color"
+                      class="color-picker"
+                      disabled={selectedShape.locked}
+                      value={selectedShape.fill.stops[1]?.color ?? '#1d4ed8'}
+                      oninput={(e) => {
+                        const color = (e.target as HTMLInputElement).value;
+                        updateSelectedShape((s) => {
+                          if (s.fill.type !== 'linear-gradient') return s;
+                          const nextStops = [...s.fill.stops];
+                          nextStops[1] = { offset: 1, color };
+                          return { ...s, fill: { ...s.fill, stops: nextStops } };
+                        });
+                      }}
+                    />
+                    <input
+                      class="field-input color-value"
+                      disabled={selectedShape.locked}
+                      value={selectedShape.fill.stops[1]?.color ?? '#1d4ed8'}
+                      oninput={(e) => {
+                        const color = (e.target as HTMLInputElement).value;
+                        if (/^#[0-9a-fA-F]{3,8}$/.test(color)) {
+                          updateSelectedShape((s) => {
+                            if (s.fill.type !== 'linear-gradient') return s;
+                            const nextStops = [...s.fill.stops];
+                            nextStops[1] = { offset: 1, color };
+                            return { ...s, fill: { ...s.fill, stops: nextStops } };
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- Stroke section -->
+        <div class="tool-section">
+          <h4 class="section-title">Stroke</h4>
+          <div class="type-selector">
+            <button
+              type="button"
+              class:active={!selectedShape.stroke}
+              disabled={selectedShape.locked}
+              onclick={() => updateSelectedShape((s) => ({ ...s, stroke: null }))}
+            >
+              None
+            </button>
+            <button
+              type="button"
+              class:active={selectedShape.stroke?.style === 'solid'}
+              disabled={selectedShape.locked}
+              onclick={() =>
+                updateSelectedShape((s) => ({
+                  ...s,
+                  stroke: { color: s.stroke?.color ?? '#0f172a', width: s.stroke?.width || 2, style: 'solid' },
+                }))}
+            >
+              Solid
+            </button>
+            <button
+              type="button"
+              class:active={selectedShape.stroke?.style === 'dashed'}
+              disabled={selectedShape.locked}
+              onclick={() =>
+                updateSelectedShape((s) => ({
+                  ...s,
+                  stroke: { color: s.stroke?.color ?? '#0f172a', width: s.stroke?.width || 2, style: 'dashed' },
+                }))}
+            >
+              Dashed
+            </button>
+          </div>
+
+          {#if selectedShape.stroke}
+            <div class="field-group mt-2">
+              <div class="flex-between">
+                <label class="field-label" for="stroke-width">Stroke Width</label>
+                <span class="field-val-hint">{selectedShape.stroke.width}px</span>
+              </div>
+              <input
+                id="stroke-width"
+                type="range"
+                min="1"
+                max="24"
+                disabled={selectedShape.locked}
+                value={selectedShape.stroke.width}
+                oninput={(e) => {
+                  const width = Number((e.target as HTMLInputElement).value);
+                  updateSelectedShape((s) => {
+                    if (!s.stroke) return s;
+                    return { ...s, stroke: { ...s.stroke, width } };
+                  });
+                }}
+              />
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">Stroke Color</span>
+              <div class="color-field">
+                <input
+                  type="color"
+                  class="color-picker"
+                  disabled={selectedShape.locked}
+                  value={selectedShape.stroke.color}
+                  oninput={(e) => {
+                    const color = (e.target as HTMLInputElement).value;
+                    updateSelectedShape((s) => {
+                      if (!s.stroke) return s;
+                      return { ...s, stroke: { ...s.stroke, color } };
+                    });
+                  }}
+                />
+                <input
+                  class="field-input color-value"
+                  disabled={selectedShape.locked}
+                  value={selectedShape.stroke.color}
+                  oninput={(e) => {
+                    const color = (e.target as HTMLInputElement).value;
+                    if (/^#[0-9a-fA-F]{3,8}$/.test(color)) {
+                      updateSelectedShape((s) => {
+                        if (!s.stroke) return s;
+                        return { ...s, stroke: { ...s.stroke, color } };
+                      });
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Corner Radius (Rectangle and Frame) -->
+        {#if selectedShape.shape === 'rectangle' || selectedShape.shape === 'frame'}
+          <div class="tool-section">
+            <h4 class="section-title">Corner Radius</h4>
+            <div class="flex-between">
+              <label class="field-label" for="corner-radius">Border Radius</label>
+              <span class="field-val-hint">{selectedShape.borderRadius}px</span>
+            </div>
+            <input
+              id="corner-radius"
+              type="range"
+              min="0"
+              max="100"
+              disabled={selectedShape.locked}
+              value={selectedShape.borderRadius}
+              oninput={(e) => {
+                const borderRadius = Number((e.target as HTMLInputElement).value);
+                updateSelectedShape((s) => ({ ...s, borderRadius }));
+              }}
+            />
+          </div>
+        {/if}
+
+        <!-- Opacity -->
+        <div class="tool-section">
+          <h4 class="section-title">Opacity</h4>
+          <div class="flex-between">
+            <label class="field-label" for="shape-opacity">Layer Opacity</label>
+            <span class="field-val-hint">{Math.round(selectedShape.opacity * 100)}%</span>
+          </div>
+          <input
+            id="shape-opacity"
+            type="range"
+            min="0"
+            max="100"
+            disabled={selectedShape.locked}
+            value={Math.round(selectedShape.opacity * 100)}
+            oninput={(e) => {
+              const opacity = Number((e.target as HTMLInputElement).value) / 100;
+              updateSelectedShape((s) => ({ ...s, opacity }));
+            }}
+          />
+        </div>
+
+        <!-- Layer Ordering (Z-Index) -->
+        <div class="tool-section">
+          <h4 class="section-title">Layer Order (Z-Index)</h4>
+          <div class="layer-order-grid">
+            <button
+              type="button"
+              class="z-order-btn"
+              title="Bring to Front"
+              onclick={bringShapeToFront}
+            >
+              <ChevronsUp size={14} />
+              <span>Front</span>
+            </button>
+            <button
+              type="button"
+              class="z-order-btn"
+              title="Bring Forward"
+              onclick={bringShapeForward}
+            >
+              <ArrowUp size={14} />
+              <span>Forward</span>
+            </button>
+            <button
+              type="button"
+              class="z-order-btn"
+              title="Send Backward"
+              onclick={sendShapeBackward}
+            >
+              <ArrowDown size={14} />
+              <span>Backward</span>
+            </button>
+            <button
+              type="button"
+              class="z-order-btn"
+              title="Send to Back"
+              onclick={sendShapeToBack}
+            >
+              <ChevronsDown size={14} />
+              <span>Back</span>
+            </button>
+          </div>
+          <div class="flex-between mt-2">
+            <span class="field-label">Current Z-Index:</span>
+            <input
+              type="number"
+              class="z-number-input"
+              value={selectedShape.zIndex}
+              oninput={(e) => {
+                const zIndex = Number((e.target as HTMLInputElement).value);
+                updateSelectedShape((s) => ({ ...s, zIndex }));
+              }}
+            />
+          </div>
+        </div>
+      </section>
+    {:else if selectedElement && defaultLayouts[selectedElement]}
       <section class="selection-card">
         <div class="selection-title">
           <strong
@@ -1000,6 +1672,91 @@
           </div>
         </div>
       </div>
+    {:else if selectedTool === "shapes"}
+      <div class="tool-section">
+        <h4 class="section-title">Vector Shapes</h4>
+        <p class="section-desc">Add geometric shapes, lines, and frames to the certificate artboard.</p>
+
+        <div class="shape-create-grid">
+          <button type="button" class="shape-create-card" onclick={() => addShape('rectangle')}>
+            <Square size={20} />
+            <span>Rectangle</span>
+          </button>
+          <button type="button" class="shape-create-card" onclick={() => addShape('ellipse')}>
+            <Circle size={20} />
+            <span>Ellipse</span>
+          </button>
+          <button type="button" class="shape-create-card" onclick={() => addShape('line')}>
+            <Minus size={20} />
+            <span>Line</span>
+          </button>
+          <button type="button" class="shape-create-card" onclick={() => addShape('frame')}>
+            <Frame size={20} />
+            <span>Frame</span>
+          </button>
+        </div>
+
+        {#if (design.shapes?.length ?? 0) > 0}
+          <h4 class="section-title mt-4">Canvas Shapes ({(design.shapes?.length ?? 0)})</h4>
+          <div class="canvas-shapes-list">
+            {#each (design.shapes ?? []) as shape}
+              <div
+                class="canvas-shape-row"
+                class:active={selectedElement === shape.id}
+                role="button"
+                tabindex="0"
+                onclick={() => onSelectElement(shape.id)}
+                onkeydown={(e) => {
+                  if (e.key === "Enter") onSelectElement(shape.id);
+                }}
+              >
+                <div class="shape-info">
+                  {#if shape.shape === 'rectangle'}
+                    <Square size={14} />
+                  {:else if shape.shape === 'ellipse'}
+                    <Circle size={14} />
+                  {:else if shape.shape === 'line'}
+                    <Minus size={14} />
+                  {:else}
+                    <Frame size={14} />
+                  {/if}
+                  <span>{shape.shape.charAt(0).toUpperCase() + shape.shape.slice(1)}</span>
+                  <small>z:{shape.zIndex}</small>
+                </div>
+                <div class="shape-actions">
+                  <button
+                    type="button"
+                    class="tiny-icon-btn"
+                    title={shape.locked ? "Unlock" : "Lock"}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      updateSelectedShape((s) => s.id === shape.id ? { ...s, locked: !s.locked } : s);
+                    }}
+                  >
+                    {#if shape.locked}
+                      <span class="locked-icon"><Lock size={12} /></span>
+                    {:else}
+                      <Unlock size={12} />
+                    {/if}
+                  </button>
+                  <button
+                    type="button"
+                    class="tiny-icon-btn danger"
+                    title="Delete"
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      design.shapes = (design.shapes ?? []).filter((s) => s.id !== shape.id);
+                      if (selectedElement === shape.id) onSelectElement(null);
+                    }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
   </div>
 </aside>
@@ -1495,5 +2252,325 @@
 
   .icon-btn.danger:hover {
     color: #ef4444;
+  }
+
+  .shape-inspector-card {
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .shape-inspector-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .shape-title-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #1e293b;
+  }
+
+  .shape-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .icon-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .icon-action-btn:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #94a3b8;
+  }
+
+  .icon-action-btn.danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #f87171;
+  }
+
+  .locked-icon {
+    color: #f59e0b;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .field-val-hint {
+    font-size: 11px;
+    color: #64748b;
+    font-family: monospace;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+  }
+
+  .small-btn {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 24px;
+    padding: 0 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #475569;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .small-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .stops-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .stop-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stop-label {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  .layer-order-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .z-order-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 2px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #475569;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .z-order-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #cbd5e1;
+  }
+
+  .z-number-input {
+    width: 60px;
+    height: 24px;
+    padding: 0 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 11px;
+    text-align: right;
+  }
+
+  .layer-subheading {
+    padding: 8px 12px 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  .shape-layer-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 12px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #334155;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .shape-layer-item:hover {
+    background: #f1f5f9;
+  }
+
+  .shape-layer-item.active {
+    background: #fef3c7;
+    color: #b45309;
+    font-weight: 600;
+  }
+
+  .shape-layer-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .shape-layer-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #64748b;
+  }
+
+  .shape-create-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .shape-create-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 8px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .shape-create-card:hover {
+    background: #ffffff;
+    border-color: #2563eb;
+    color: #2563eb;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.08);
+  }
+
+  .section-desc {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+
+  .canvas-shapes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .canvas-shape-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .canvas-shape-row:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .canvas-shape-row.active {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #b45309;
+  }
+
+  .shape-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .shape-info small {
+    font-size: 10px;
+    color: #64748b;
+  }
+
+  .shape-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .tiny-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+  }
+
+  .tiny-icon-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .tiny-icon-btn.danger:hover {
+    background: #fef2f2;
+    color: #dc2626;
   }
 </style>
