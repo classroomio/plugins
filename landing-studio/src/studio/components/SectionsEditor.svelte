@@ -153,7 +153,7 @@
                   type="text"
                   bind:value={sec.title}
                   oninput={onChange}
-                  class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
                 />
               </div>
             {/if}
@@ -168,7 +168,7 @@
                   rows="2"
                   bind:value={sec.subtitle}
                   oninput={onChange}
-                  class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+                  class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
                 ></textarea>
               </div>
             {/if}
@@ -180,7 +180,7 @@
                   <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Feature Items</span>
                   <button
                     type="button"
-                    class="flex items-center gap-1 text-[11px] font-semibold text-indigo-600"
+                    class="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
                     onclick={() => addFeatureItem(sec)}
                   >
                     <PlusIcon class="size-3" />
@@ -254,7 +254,7 @@
                   <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">FAQ Items</span>
                   <button
                     type="button"
-                    class="flex items-center gap-1 text-[11px] font-semibold text-indigo-600"
+                    class="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
                     onclick={() => addFaqItem(sec)}
                   >
                     <PlusIcon class="size-3" />
@@ -299,7 +299,7 @@
                   <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Testimonials</span>
                   <button
                     type="button"
-                    class="flex items-center gap-1 text-[11px] font-semibold text-indigo-600"
+                    class="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
                     onclick={() => addTestimonialItem(sec)}
                   >
                     <PlusIcon class="size-3" />

@@ -43,7 +43,7 @@
         type="checkbox"
         bind:checked={doc.navigation.showLogo}
         onchange={onChange}
-        class="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+        class="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
       />
       Show Organization Logo
     </label>
@@ -53,7 +53,7 @@
         type="checkbox"
         bind:checked={doc.navigation.showAuthAction}
         onchange={onChange}
-        class="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+        class="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
       />
       Show Sign In & Dashboard Button
     </label>
@@ -64,7 +64,7 @@
         <span class="text-xs font-medium text-slate-600 dark:text-slate-400">Header Links</span>
         <button
           type="button"
-          class="flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-500"
+          class="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
           onclick={addCustomLink}
         >
           <PlusIcon class="size-3" />
@@ -79,14 +79,14 @@
             bind:value={link.label}
             oninput={onChange}
             placeholder="Label"
-            class="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+            class="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
           />
           <input
             type="text"
             bind:value={link.href}
             oninput={onChange}
             placeholder="#href or /url"
-            class="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-mono focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
+            class="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-mono focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950"
           />
           <button
             type="button"
@@ -113,7 +113,7 @@
         bind:value={doc.hero.badge}
         oninput={onChange}
         placeholder="e.g. 🚀 Next Cohort Starting Soon"
-        class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+        class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
       />
     </div>
 
@@ -127,7 +127,7 @@
         bind:value={doc.hero.headline}
         oninput={onChange}
         placeholder="Enter headline"
-        class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+        class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
       />
     </div>
 
@@ -141,7 +141,7 @@
         bind:value={doc.hero.subheadline}
         oninput={onChange}
         placeholder="Enter description supporting your headline"
-        class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+        class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
       ></textarea>
     </div>
 
@@ -156,7 +156,7 @@
           type="text"
           bind:value={doc.hero.primaryAction.label}
           oninput={onChange}
-          class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+          class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
         />
       </div>
 
@@ -169,7 +169,7 @@
           type="text"
           bind:value={doc.hero.primaryAction.href}
           oninput={onChange}
-          class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+          class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
         />
       </div>
     </div>
@@ -184,7 +184,7 @@
           id="media-type"
           bind:value={doc.hero.mediaType}
           onchange={onChange}
-          class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+          class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
         >
           <option value="image">Image</option>
           <option value="none">No Image (Centered text)</option>
@@ -202,7 +202,7 @@
             bind:value={doc.hero.mediaUrl}
             oninput={onChange}
             placeholder="https://..."
-            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900"
           />
         </div>
       {/if}

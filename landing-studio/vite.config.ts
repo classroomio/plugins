@@ -10,9 +10,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        studio: path.resolve(__dirname, 'studio.html')
+        studio: path.resolve(__dirname, 'studio.html'),
+        picker: path.resolve(__dirname, 'picker.html')
       }
     }
   }
 });
-

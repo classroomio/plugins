@@ -1,285 +1,434 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { createClassroomIOClient, type ClassroomIOClient } from '@classroomio/plugin-sdk';
   import {
     getDefaultDocumentForTemplate,
-    isLandingPageDocumentV1,
-    TEMPLATES,
+    renderLandingPage,
     validateLandingPageDocument,
     type LandingPageCourse,
     type LandingPageDocumentV1,
     type LandingPageOrganization,
     type LandingPageTemplateId
   } from '@cio/landing-pages';
-  import LayoutTemplateIcon from '@lucide/svelte/icons/layout-template';
-  import PaletteIcon from '@lucide/svelte/icons/palette';
+  import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+  import CheckIcon from '@lucide/svelte/icons/check';
+  import EyeIcon from '@lucide/svelte/icons/eye';
   import GlobeIcon from '@lucide/svelte/icons/globe';
   import LayersIcon from '@lucide/svelte/icons/layers';
-  import UploadCloudIcon from '@lucide/svelte/icons/upload-cloud';
-  import CheckIcon from '@lucide/svelte/icons/check';
-  import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
-
+  import LayoutTemplateIcon from '@lucide/svelte/icons/layout-template';
+  import LoaderIcon from '@lucide/svelte/icons/loader-2';
+  import PaletteIcon from '@lucide/svelte/icons/palette';
+  import PanelLeftCloseIcon from '@lucide/svelte/icons/panel-left-close';
+  import PanelLeftOpenIcon from '@lucide/svelte/icons/panel-left-open';
+  import PencilIcon from '@lucide/svelte/icons/pencil';
+  import PlusIcon from '@lucide/svelte/icons/plus';
+  import SaveIcon from '@lucide/svelte/icons/save';
+  import TrashIcon from '@lucide/svelte/icons/trash-2';
+  import { StudioApiClient } from '../shared/api';
+  import type { StudioLandingPageTemplate } from '../shared/types';
+  import HeroEditor from './components/HeroEditor.svelte';
+  import LivePreview from './components/LivePreview.svelte';
+  import SectionsEditor from './components/SectionsEditor.svelte';
   import TemplatePicker from './components/TemplatePicker.svelte';
   import ThemeEditor from './components/ThemeEditor.svelte';
-  import HeroEditor from './components/HeroEditor.svelte';
-  import SectionsEditor from './components/SectionsEditor.svelte';
-  import LivePreview from './components/LivePreview.svelte';
-
-  const client: ClassroomIOClient = createClassroomIOClient();
 
   type Tab = 'templates' | 'theme' | 'hero' | 'sections';
+  type CourseListResponse = {
+    items?: Array<{
+      id: string;
+      title: string;
+      description?: string | null;
+      slug?: string | null;
+      imageUrl?: string | null;
+      published?: boolean;
+    }>;
+  };
+
+  const client: ClassroomIOClient = createClassroomIOClient();
+  const api = new StudioApiClient(client);
   let activeTab = $state<Tab>('templates');
-
-  let doc = $state<LandingPageDocumentV1>(getDefaultDocumentForTemplate('bootcamp'));
-  let organization = $state<LandingPageOrganization>({
-    id: '',
-    name: 'My Academy',
-    slug: '',
-    logoUrl: null
-  });
+  let templates = $state<StudioLandingPageTemplate[]>([]);
+  let activeTemplate = $state<StudioLandingPageTemplate | null>(null);
+  let templateName = $state('');
+  let document = $state<LandingPageDocumentV1>(getDefaultDocumentForTemplate('modern'));
+  let savedSnapshot = $state('');
+  let isLoading = $state(true);
+  let isSaving = $state(false);
+  let errorMessage = $state('');
+  let editorOpen = $state(false);
+  let isSidebarCollapsed = $state(false);
+  let isFullPreviewOpen = $state(false);
+  let organization = $state<LandingPageOrganization>({ id: '', name: 'My Academy', slug: '', logoUrl: null });
   let courses = $state<LandingPageCourse[]>([]);
+  const isEditing = $derived(editorOpen);
+  const currentSnapshot = $derived(JSON.stringify({ name: templateName.trim(), document }));
+  const hasUnsavedChanges = $derived(editorOpen && currentSnapshot !== savedSnapshot);
 
-  let isPublishing = $state(false);
-  let isDirty = $state(false);
-  let saveStatus = $state<'saved' | 'saving' | 'unsaved'>('saved');
-  let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function scheduleAutosave() {
-    isDirty = true;
-    saveStatus = 'unsaved';
-    void client.ui.setDirty(true);
-
-    if (autosaveTimer) clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(async () => {
-      saveStatus = 'saving';
-      try {
-        await client.storage.set('draft-document', JSON.parse(JSON.stringify(doc)), 'landing-studio', 'organization');
-        saveStatus = 'saved';
-      } catch (err) {
-        console.warn('Autosave failed:', err);
-        saveStatus = 'unsaved';
-      }
-    }, 1200);
-  }
-
-  function handleDocumentChange() {
-    scheduleAutosave();
-  }
-
-  function handleSelectTemplate(id: LandingPageTemplateId, newDoc: LandingPageDocumentV1) {
-    doc = newDoc;
-    scheduleAutosave();
-  }
-
-  function handleResetToDefault() {
-    doc = getDefaultDocumentForTemplate(doc.templateId);
-    scheduleAutosave();
-  }
-
-  async function handlePublish() {
-    if (isPublishing) return;
-
-    const validation = validateLandingPageDocument(doc);
-    if (!validation.success) {
-      await client.ui.toast({
-        message: `Validation error: ${validation.error}`,
-        variant: 'error'
-      });
-      return;
-    }
-
-    isPublishing = true;
-    try {
-      const templateName = TEMPLATES[doc.templateId]?.name ?? doc.templateId;
-      await client.action('landing-page:publish', {
-        document: JSON.parse(JSON.stringify(doc)),
-        templateSourceId: doc.templateId,
-        templateName
-      });
-
-      isDirty = false;
-      saveStatus = 'saved';
-      await client.ui.setDirty(false);
-      await client.ui.toast({
-        message: 'Landing page published successfully! Changes are live on your academy homepage.',
-        variant: 'success'
-      });
-    } catch (err: unknown) {
-      console.error('Failed to publish landing page:', err);
-      const errMsg = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
-      await client.ui.toast({
-        message: `Failed to publish: ${errMsg}`,
-        variant: 'error'
-      });
-    } finally {
-      isPublishing = false;
-    }
-  }
+  $effect(() => {
+    void client.ui.setDirty(hasUnsavedChanges);
+  });
 
   onMount(async () => {
-    // 1. Sync theme
     try {
-      const currentTheme = await client.theme.get();
-      if (currentTheme?.colorScheme) {
-        document.documentElement.setAttribute('data-theme', currentTheme.colorScheme);
-      }
+      const theme = await client.theme.get();
+      globalThis.document.documentElement.setAttribute('data-theme', theme.colorScheme);
     } catch {}
 
-    // 2. Fetch context
     try {
-      const ctx = await client.context.get();
-      if (ctx?.organization) {
+      const context = await client.context.get();
+      if (context.organization) {
         organization = {
-          id: ctx.organization.id,
-          name: ctx.organization.name,
+          id: context.organization.id,
+          name: context.organization.name,
           slug: '',
-          logoUrl: ctx.organization.avatarUrl ?? null
+          logoUrl: context.organization.avatarUrl ?? null
         };
       }
     } catch {}
 
-    // 3. Fetch courses
     try {
-      const res = await client.action<{ courses: LandingPageCourse[] } | LandingPageCourse[]>('courses:list', {
-        limit: 8,
-        publishedOnly: true
+      const response = await client.action<CourseListResponse>('courses:list', { limit: 8, publishedOnly: true });
+      courses = (response.items ?? []).flatMap((course) => {
+        if (!course.slug) return [];
+        return [
+          {
+            id: course.id,
+            title: course.title,
+            description: course.description ?? null,
+            slug: course.slug,
+            image: course.imageUrl ?? null,
+            isPricing: false,
+            totalLessons: 0
+          }
+        ];
       });
-      if (Array.isArray(res)) {
-        courses = res;
-      } else if (res && typeof res === 'object' && 'courses' in res && Array.isArray(res.courses)) {
-        courses = res.courses;
-      }
-    } catch (e) {
-      console.warn('Could not load course list for preview:', e);
-    }
+    } catch {}
 
-    // 4. Load draft from plugin storage
     try {
-      const saved = await client.storage.get<unknown>('draft-document', 'landing-studio', 'organization');
-      if (isLandingPageDocumentV1(saved)) {
-        doc = saved;
-      }
-    } catch (e) {
-      console.warn('Could not load draft landing page document:', e);
+      templates = await api.listTemplates();
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : 'Failed to load landing page templates';
+    } finally {
+      isLoading = false;
     }
   });
 
-  onDestroy(() => {
-    if (autosaveTimer) clearTimeout(autosaveTimer);
-  });
+  function beginCreate() {
+    editorOpen = true;
+    activeTemplate = null;
+    templateName = 'Untitled landing page';
+    document = getDefaultDocumentForTemplate('modern');
+    savedSnapshot = '';
+    activeTab = 'templates';
+    errorMessage = '';
+    isSidebarCollapsed = false;
+  }
+
+  function beginEdit(template: StudioLandingPageTemplate) {
+    editorOpen = true;
+    activeTemplate = template;
+    templateName = template.name;
+    document = structuredClone(template.document);
+    savedSnapshot = JSON.stringify({ name: templateName, document });
+    activeTab = 'templates';
+    errorMessage = '';
+    isSidebarCollapsed = false;
+  }
+
+  function closeEditor() {
+    if (hasUnsavedChanges && !window.confirm('Discard your unsaved changes?')) return;
+    activeTemplate = null;
+    templateName = '';
+    savedSnapshot = '';
+    editorOpen = false;
+    void client.ui.setDirty(false);
+  }
+
+  function handleSelectTemplate(id: LandingPageTemplateId, nextDocument: LandingPageDocumentV1) {
+    document = nextDocument;
+  }
+
+  async function saveTemplate() {
+    const name = templateName.trim();
+    if (!name || isSaving) return;
+
+    const validation = validateLandingPageDocument(document);
+    if (!validation.success || !validation.data) {
+      errorMessage = validation.error ?? 'Invalid landing page document';
+      return;
+    }
+
+    isSaving = true;
+    errorMessage = '';
+    try {
+      const saved = activeTemplate
+        ? await api.updateTemplate(activeTemplate, name, validation.data)
+        : await api.createTemplate(name, validation.data);
+      activeTemplate = saved;
+      document = structuredClone(saved.document);
+      templateName = saved.name;
+      templates = [saved, ...templates.filter((template) => template.id !== saved.id)];
+      savedSnapshot = JSON.stringify({ name: templateName, document });
+      await client.ui.setDirty(false);
+      await client.ui.toast({ message: 'Landing page template saved', variant: 'success' });
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : 'Failed to save landing page template';
+    } finally {
+      isSaving = false;
+    }
+  }
+
+  async function deleteTemplate(template: StudioLandingPageTemplate) {
+    if (!window.confirm(`Delete “${template.name}”? Applied landing pages will keep their current design.`)) return;
+
+    try {
+      await api.deleteTemplate(template.id);
+      templates = templates.filter((item) => item.id !== template.id);
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : 'Failed to delete landing page template';
+    }
+  }
+
+  function renderThumbnail(template: StudioLandingPageTemplate): string {
+    const rendered = renderLandingPage(template.document, {
+      organization: { id: 'preview', name: organization.name, slug: '', logoUrl: organization.logoUrl },
+      courses: [],
+      auth: { isAuthenticated: false }
+    });
+    const styleOpen = '<' + 'style>';
+    const styleClose = '</' + 'style>';
+    return `<!doctype html><html><head><meta charset="utf-8">${styleOpen}*{box-sizing:border-box}html,body{margin:0;pointer-events:none;overflow:hidden}${rendered.css}${styleClose}</head><body>${rendered.html}</body></html>`;
+  }
 </script>
 
-<div class="flex h-screen w-screen flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-  <!-- Studio Top Bar -->
-  <header class="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900">
-    <div class="flex items-center gap-3">
-      <div class="flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
-        <LayoutTemplateIcon class="size-4" />
-      </div>
-      <div>
-        <h1 class="text-sm font-bold text-slate-900 dark:text-white leading-tight">Landing Page Studio</h1>
-        <div class="flex items-center gap-2 text-[11px] text-slate-500">
-          <span>Template: <strong class="text-slate-700 dark:text-slate-300 capitalize">{doc.templateId}</strong></span>
-          <span>•</span>
-          {#if saveStatus === 'saving'}
-            <span class="text-amber-500">Saving draft...</span>
-          {:else if saveStatus === 'saved'}
-            <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-              <CheckIcon class="size-2.5" />
-              Draft saved
-            </span>
-          {:else}
-            <span class="text-slate-400">Unsaved changes</span>
-          {/if}
+{#if !isEditing}
+  <div class="min-h-screen bg-slate-50 p-6 md:p-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans">
+    <header class="mx-auto mb-8 flex max-w-6xl items-center justify-between gap-4 border-b border-slate-200/80 pb-6 dark:border-slate-800">
+      <div class="flex items-center gap-3.5">
+        <div class="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+          <LayoutTemplateIcon class="size-5" />
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Landing Page Studio</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Create reusable landing page templates for your academy.</p>
         </div>
       </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="flex items-center gap-2">
       <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        onclick={handleResetToDefault}
-        title="Reset current template to defaults"
+        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] transition-all"
+        onclick={beginCreate}
       >
-        <RotateCcwIcon class="size-3.5" />
-        <span>Reset</span>
+        <PlusIcon size={15} />
+        <span>Create template</span>
       </button>
+    </header>
 
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-50"
-        onclick={handlePublish}
-        disabled={isPublishing}
-      >
-        <UploadCloudIcon class="size-3.5" />
-        <span>{isPublishing ? 'Publishing...' : 'Publish Landing Page'}</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- Workspace Area -->
-  <div class="flex flex-1 overflow-hidden">
-    <!-- Left Navigation / Tabs Column -->
-    <nav class="flex w-16 shrink-0 flex-col items-center gap-2 border-r border-slate-200 bg-white py-3 dark:border-slate-800 dark:bg-slate-900">
-      <button
-        type="button"
-        class="flex flex-col items-center gap-1 rounded-xl p-2.5 text-[10px] font-medium transition-colors {activeTab === 'templates' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}"
-        onclick={() => (activeTab = 'templates')}
-        title="Templates"
-      >
-        <LayoutTemplateIcon class="size-5" />
-        <span>Templates</span>
-      </button>
-
-      <button
-        type="button"
-        class="flex flex-col items-center gap-1 rounded-xl p-2.5 text-[10px] font-medium transition-colors {activeTab === 'theme' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}"
-        onclick={() => (activeTab = 'theme')}
-        title="Theme & Colors"
-      >
-        <PaletteIcon class="size-5" />
-        <span>Theme</span>
-      </button>
-
-      <button
-        type="button"
-        class="flex flex-col items-center gap-1 rounded-xl p-2.5 text-[10px] font-medium transition-colors {activeTab === 'hero' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}"
-        onclick={() => (activeTab = 'hero')}
-        title="Hero & Navigation"
-      >
-        <GlobeIcon class="size-5" />
-        <span>Hero</span>
-      </button>
-
-      <button
-        type="button"
-        class="flex flex-col items-center gap-1 rounded-xl p-2.5 text-[10px] font-medium transition-colors {activeTab === 'sections' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'}"
-        onclick={() => (activeTab = 'sections')}
-        title="Content Sections"
-      >
-        <LayersIcon class="size-5" />
-        <span>Sections</span>
-      </button>
-    </nav>
-
-    <!-- Editor Settings Panel -->
-    <div class="w-96 shrink-0 overflow-y-auto border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      {#if activeTab === 'templates'}
-        <TemplatePicker currentDocument={doc} onSelectTemplate={handleSelectTemplate} />
-      {:else if activeTab === 'theme'}
-        <ThemeEditor document={doc} onChange={handleDocumentChange} />
-      {:else if activeTab === 'hero'}
-        <HeroEditor document={doc} onChange={handleDocumentChange} />
-      {:else if activeTab === 'sections'}
-        <SectionsEditor document={doc} onChange={handleDocumentChange} />
+    <main class="mx-auto max-w-6xl">
+      {#if errorMessage}<p class="mb-4 text-xs font-medium text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">{errorMessage}</p>{/if}
+      {#if isLoading}
+        <div class="flex min-h-64 items-center justify-center gap-2 text-xs font-medium text-slate-500">
+          <LoaderIcon class="animate-spin text-blue-600" size={18} /> Loading templates…
+        </div>
+      {:else if templates.length === 0}
+        <div
+          class="rounded-2xl border border-dashed border-slate-300 bg-white p-16 text-center dark:border-slate-800 dark:bg-slate-900 shadow-sm max-w-2xl mx-auto my-6"
+        >
+          <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+            <LayoutTemplateIcon size={26} />
+          </div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">No landing page templates yet</h2>
+          <p class="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Create your first reusable academy landing page. You can customize colors, typography, hero sections, and content blocks.
+          </p>
+          <button
+            class="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] transition-all"
+            onclick={beginCreate}
+          >
+            <PlusIcon size={15} />
+            <span>Create template</span>
+          </button>
+        </div>
+      {:else}
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {#each templates as template (template.id)}
+            <article
+              class="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+            >
+              <button
+                class="relative block aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800 text-left border-b border-slate-100 dark:border-slate-800"
+                aria-label={`Edit ${template.name}`}
+                onclick={() => beginEdit(template)}
+              >
+                <iframe
+                  title={template.name}
+                  srcdoc={renderThumbnail(template)}
+                  sandbox=""
+                  class="pointer-events-none absolute h-[800px] w-[1280px] origin-top-left scale-[0.27] border-0"
+                ></iframe>
+                <div class="absolute inset-0 bg-slate-900/0 transition-colors group-hover:bg-slate-900/5"></div>
+              </button>
+              <div class="flex items-center justify-between gap-3 p-4">
+                <button class="min-w-0 flex-1 text-left" onclick={() => beginEdit(template)}>
+                  <span class="block truncate text-xs font-bold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400 transition-colors">{template.name}</span>
+                  <span class="block text-[11px] text-slate-400 mt-0.5"
+                    >Updated {new Date(template.updatedAt).toLocaleDateString()}</span
+                  >
+                </button>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button
+                    class="inline-flex items-center gap-1 rounded-md bg-slate-100 hover:bg-blue-50 hover:text-blue-600 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-950/50 dark:hover:text-blue-400 transition-colors"
+                    onclick={() => beginEdit(template)}
+                  >
+                    <PencilIcon size={12} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    class="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400 transition-colors"
+                    aria-label={`Delete ${template.name}`}
+                    onclick={() => deleteTemplate(template)}
+                  >
+                    <TrashIcon size={14} />
+                  </button>
+                </div>
+              </div>
+            </article>
+          {/each}
+        </div>
       {/if}
-    </div>
-
-    <!-- Live Preview Pane -->
-    <main class="flex-1 overflow-hidden">
-      <LivePreview document={doc} {organization} {courses} />
     </main>
   </div>
-</div>
+{:else}
+  <div
+    class="flex h-screen w-screen flex-col overflow-hidden bg-slate-100 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+  >
+    <!-- Studio Header (ClassroomIO standard 56px header) -->
+    <header
+      class="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 z-30"
+    >
+      <div class="flex min-w-0 items-center gap-3">
+        <button
+          class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-colors"
+          aria-label="Back to templates"
+          onclick={closeEditor}
+        >
+          <ArrowLeftIcon size={14} />
+          <span>Templates</span>
+        </button>
+        <div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
+        <div class="flex items-center gap-2">
+          <label for="editor-template-name" class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider hidden sm:block">Template:</label>
+          <input
+            id="editor-template-name"
+            class="w-60 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-900 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            bind:value={templateName}
+            aria-label="Template name"
+            placeholder="Template name"
+          />
+        </div>
+        {#if !hasUnsavedChanges}
+          <span class="hidden sm:flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+            <CheckIcon size={12} /> Saved
+          </span>
+        {:else}
+          <span class="hidden sm:flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            <span class="size-1.5 rounded-full bg-amber-500 animate-pulse"></span> Unsaved changes
+          </span>
+        {/if}
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
+          onclick={() => (isSidebarCollapsed = !isSidebarCollapsed)}
+          title={isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        >
+          {#if isSidebarCollapsed}
+            <PanelLeftOpenIcon size={14} />
+            <span class="hidden md:inline">Show sidebar</span>
+          {:else}
+            <PanelLeftCloseIcon size={14} />
+            <span class="hidden md:inline">Hide sidebar</span>
+          {/if}
+        </button>
+
+        <button
+          type="button"
+          class="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
+          onclick={() => (isFullPreviewOpen = true)}
+          title="Open full page preview"
+        >
+          <EyeIcon size={14} />
+          <span class="hidden sm:inline">Preview</span>
+        </button>
+
+        <button
+          class="flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all"
+          disabled={isSaving || !templateName.trim() || !hasUnsavedChanges}
+          onclick={saveTemplate}
+        >
+          {#if isSaving}
+            <LoaderIcon class="animate-spin" size={14} />
+            <span>Saving…</span>
+          {:else}
+            <SaveIcon size={14} />
+            <span>Save changes</span>
+          {/if}
+        </button>
+      </div>
+    </header>
+
+    {#if errorMessage}<div class="bg-red-50 px-4 py-2 text-xs font-medium text-red-700 border-b border-red-200">{errorMessage}</div>{/if}
+
+    <!-- Workspace Body -->
+    <div class="flex flex-1 overflow-hidden relative">
+      {#if !isSidebarCollapsed}
+        <!-- Left vertical tab icon strip -->
+        <nav
+          class="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-slate-200 bg-white py-3 dark:border-slate-800 dark:bg-slate-900 z-20"
+        >
+          {#each [{ id: 'templates', label: 'Templates', icon: LayoutTemplateIcon }, { id: 'theme', label: 'Theme', icon: PaletteIcon }, { id: 'hero', label: 'Hero', icon: GlobeIcon }, { id: 'sections', label: 'Sections', icon: LayersIcon }] as item (item.id)}
+            {@const Icon = item.icon}
+            {@const isActive = activeTab === item.id}
+            <button
+              class="relative flex w-12 flex-col items-center gap-1 rounded-xl p-2 text-[10px] font-semibold transition-all {isActive
+                ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'}"
+              onclick={() => (activeTab = item.id as Tab)}
+            >
+              {#if isActive}
+                <span class="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-blue-600"></span>
+              {/if}
+              <Icon class="size-4" />
+              <span>{item.label}</span>
+            </button>
+          {/each}
+        </nav>
+
+        <!-- Sub-editor sidebar -->
+        <aside
+          class="w-80 md:w-96 shrink-0 overflow-y-auto border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 z-10 shadow-sm"
+        >
+          {#if activeTab === 'templates'}
+            <TemplatePicker currentDocument={document} onSelectTemplate={handleSelectTemplate} />
+          {:else if activeTab === 'theme'}
+            <ThemeEditor {document} onChange={() => {}} />
+          {:else if activeTab === 'hero'}
+            <HeroEditor {document} onChange={() => {}} />
+          {:else}
+            <SectionsEditor {document} onChange={() => {}} />
+          {/if}
+        </aside>
+      {/if}
+
+      <!-- Main Canvas Stage -->
+      <main class="flex-1 overflow-hidden relative">
+        <LivePreview
+          {document}
+          {organization}
+          {courses}
+          bind:isFullPreviewOpen
+        />
+      </main>
+    </div>
+  </div>
+{/if}

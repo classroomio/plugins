@@ -13,8 +13,8 @@
   let { document: doc, onChange }: Props = $props();
 
   const presetPalettes = [
-    { name: 'Indigo Modern', primary: '#4f46e5', secondary: '#06b6d4', bg: '#0f172a' },
-    { name: 'Classic Blue', primary: '#2563eb', secondary: '#3b82f6', bg: '#f8fafc' },
+    { name: 'ClassroomIO Blue', primary: '#2563eb', secondary: '#3b82f6', bg: '#0f172a' },
+    { name: 'Classic Light', primary: '#2563eb', secondary: '#60a5fa', bg: '#f8fafc' },
     { name: 'Warm Amber', primary: '#ea580c', secondary: '#f59e0b', bg: '#ffffff' },
     { name: 'Minimal Dark', primary: '#18181b', secondary: '#52525b', bg: '#fafafa' },
     { name: 'Forest Emerald', primary: '#059669', secondary: '#10b981', bg: '#f0fdf4' },
@@ -78,7 +78,7 @@
           type="text"
           bind:value={doc.theme.primaryColor}
           oninput={onChange}
-          class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+          class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
         />
       </div>
     </div>
@@ -99,7 +99,7 @@
           type="text"
           bind:value={doc.theme.secondaryColor}
           oninput={onChange}
-          class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+          class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
         />
       </div>
     </div>
@@ -120,7 +120,7 @@
           type="text"
           bind:value={doc.theme.backgroundColor}
           oninput={onChange}
-          class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+          class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white"
         />
       </div>
     </div>
@@ -135,7 +135,7 @@
       id="font-family"
       bind:value={doc.theme.fontFamily}
       onchange={onChange}
-      class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white capitalize"
+      class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white capitalize"
     >
       {#each LANDING_PAGE_FONT_FAMILIES as f}
         <option value={f}>{f.replace(/-/g, ' ')}</option>

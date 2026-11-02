@@ -8,6 +8,7 @@ import {
   TEMPLATES,
   validateLandingPageDocument
 } from '@cio/landing-pages';
+import { landingPageDocumentsMatch } from '../src/picker/template-match';
 
 describe('Landing Page Studio Plugin', () => {
   it('has a valid plugin.json manifest', () => {
@@ -23,6 +24,8 @@ describe('Landing Page Studio Plugin', () => {
     expect(manifest.permissions?.required).toContain('plugin.storage:read');
     expect(manifest.permissions?.required).toContain('plugin.storage:write');
     expect(manifest.permissions?.required).toContain('course.metadata:read');
+    expect(manifest.runtime?.ui?.entrypoints?.templatePicker?.resource).toBe('dist/picker.html');
+    expect(manifest.contributes?.slots?.[0]?.target).toBe('landing.templates');
   });
 
   it('provides valid templates and default documents conforming to schema', () => {
@@ -40,7 +43,12 @@ describe('Landing Page Studio Plugin', () => {
       expect(validation.success).toBe(true);
 
       const rendered = renderLandingPage(doc, {
-        organization: { id: 'org-test', name: 'Test Org', slug: 'test-org', logoUrl: null },
+        organization: {
+          id: 'org-test',
+          name: 'Test Org',
+          slug: 'test-org',
+          logoUrl: null
+        },
         courses: [
           {
             id: 'c-1',
@@ -48,18 +56,17 @@ describe('Landing Page Studio Plugin', () => {
             description: 'Learn modern web dev',
             slug: 'fullstack-dev',
             published: true,
-            coverImage: null,
-            instructorName: 'Jane Doe',
+            image: null,
+            isPricing: true,
             currency: 'USD',
-            price: 99
+            cost: 99,
+            totalLessons: 12
           }
         ],
         auth: {
           isAuthenticated: false,
           user: null,
-          dashboardUrl: '/dashboard',
-          loginUrl: '/login',
-          signupUrl: '/signup'
+          action: { label: 'Sign in', href: '/login' }
         }
       });
 
@@ -67,6 +74,14 @@ describe('Landing Page Studio Plugin', () => {
       expect(rendered.html).toContain('Fullstack Dev');
       expect(rendered.css).toBeDefined();
     }
+  });
+
+  it('matches an applied template regardless of object key order', () => {
+    const document = getDefaultDocumentForTemplate('modern');
+    const reorderedDocument = Object.fromEntries(Object.entries(document).reverse());
+
+    expect(landingPageDocumentsMatch(document, reorderedDocument)).toBe(true);
+    expect(landingPageDocumentsMatch(document, getDefaultDocumentForTemplate('minimal'))).toBe(false);
   });
 
   it('Verifies zero private ClassroomIO internal imports in plugin source', () => {
@@ -114,4 +129,3 @@ describe('Landing Page Studio Plugin', () => {
     }
   });
 });
-
