@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     renderLandingPage,
     escapeHtml,
@@ -21,6 +22,8 @@
     document: LandingPageDocumentV1;
     organization: LandingPageOrganization;
     courses: LandingPageCourse[];
+    selectedSectionId?: string | null;
+    onSelectSection?: (id: string) => void;
     isFullPreviewOpen?: boolean;
   }
 
@@ -28,6 +31,8 @@
     document: doc,
     organization,
     courses,
+    selectedSectionId = null,
+    onSelectSection,
     isFullPreviewOpen = $bindable(false)
   }: Props = $props();
 
@@ -39,6 +44,10 @@
   let manualZoom = $state<number>(1);
   let stageWidth = $state<number>(800);
   let stageHeight = $state<number>(600);
+  let desktopIframe = $state<HTMLIFrameElement | null>(null);
+  let tabletIframe = $state<HTMLIFrameElement | null>(null);
+  let mobileIframe = $state<HTMLIFrameElement | null>(null);
+  let modalIframe = $state<HTMLIFrameElement | null>(null);
 
   const VIEWPORT_SPECS = {
     desktop: { width: 1280, height: 850, label: 'Desktop', note: '1280px' },
@@ -64,7 +73,6 @@
       return Math.min(1, Math.max(0.4, Math.round(fitW * 100) / 100));
     }
 
-    // Mobile: 375px fits natively on most screens
     if (availableWidth >= targetW) {
       return 1;
     }
@@ -92,6 +100,32 @@
     manualZoom = level;
   }
 
+  onMount(() => {
+    function handleWindowMessage(event: MessageEvent) {
+      if (event.data?.type === 'cio-studio:select-section') {
+        onSelectSection?.(event.data.sectionId);
+      }
+    }
+    window.addEventListener('message', handleWindowMessage);
+    return () => window.removeEventListener('message', handleWindowMessage);
+  });
+
+  function syncHighlight(targetId: string | null) {
+    const iframes = [desktopIframe, tabletIframe, mobileIframe, modalIframe];
+    for (const ifr of iframes) {
+      if (ifr?.contentWindow) {
+        ifr.contentWindow.postMessage(
+          { type: 'cio-studio:highlight-section', sectionId: targetId },
+          '*'
+        );
+      }
+    }
+  }
+
+  $effect(() => {
+    syncHighlight(selectedSectionId);
+  });
+
   const renderData = $derived<LandingPageRenderData>({
     organization,
     courses,
@@ -115,6 +149,78 @@
     }
   });
 
+  const interactiveHelperScript = `
+    <script>
+      (function() {
+        function setupInteractiveCanvas() {
+          document.addEventListener('click', function(e) {
+            var anchor = e.target.closest('a');
+            if (anchor) e.preventDefault();
+          }, true);
+
+          document.addEventListener('submit', function(e) {
+            e.preventDefault();
+          }, true);
+
+          var selectables = document.querySelectorAll('.cio-lp-section, .cio-lp-hero, header.cio-lp-header, footer.cio-lp-footer');
+          selectables.forEach(function(el) {
+            el.style.cursor = 'pointer';
+            el.style.position = el.style.position || 'relative';
+            el.style.transition = 'box-shadow 0.15s ease, outline 0.15s ease';
+
+            el.addEventListener('mouseenter', function() {
+              if (!el.hasAttribute('data-selected')) {
+                el.style.outline = '2px dashed #2563eb';
+                el.style.outlineOffset = '-2px';
+              }
+            });
+            el.addEventListener('mouseleave', function() {
+              if (!el.hasAttribute('data-selected')) {
+                el.style.outline = '';
+                el.style.outlineOffset = '';
+              }
+            });
+
+            el.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var secId = el.id || (el.classList.contains('cio-lp-hero') ? 'hero' : '');
+              if (secId) {
+                window.parent.postMessage({ type: 'cio-studio:select-section', sectionId: secId }, '*');
+              }
+            });
+          });
+
+          window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'cio-studio:highlight-section') {
+              var targetId = event.data.sectionId;
+              selectables.forEach(function(el) {
+                var isTarget = (el.id === targetId) || (targetId === 'hero' && el.classList.contains('cio-lp-hero'));
+                if (isTarget) {
+                  el.setAttribute('data-selected', 'true');
+                  el.style.outline = '3px solid #2563eb';
+                  el.style.outlineOffset = '-3px';
+                  el.style.boxShadow = '0 0 0 4px rgba(37, 99, 235, 0.2)';
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                  el.removeAttribute('data-selected');
+                  el.style.outline = '';
+                  el.style.outlineOffset = '';
+                  el.style.boxShadow = '';
+                }
+              });
+            }
+          });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', setupInteractiveCanvas);
+        } else {
+          setupInteractiveCanvas();
+        }
+      })();
+    </` + `script>
+  `;
+
   const fullHtml = $derived.by(() => {
     const styleOpen = '<' + 'style>';
     const styleClose = '</' + 'style>';
@@ -129,12 +235,12 @@
           ${styleOpen}
             *, *::before, *::after { box-sizing: border-box; }
             html, body { margin: 0; padding: 0; }
-            body { pointer-events: none; }
             ${rendered.css}
           ${styleClose}
         </head>
         <body>
           ${rendered.html}
+          ${interactiveHelperScript}
         </body>
       </html>
     `;
@@ -302,10 +408,12 @@
             <!-- Iframe Container -->
             <div class="flex-1 overflow-hidden bg-white dark:bg-slate-950">
               <iframe
+                bind:this={desktopIframe}
                 title="Landing Page Desktop Preview"
                 srcdoc={fullHtml}
+                sandbox="allow-scripts allow-same-origin"
                 class="h-full w-full border-none"
-                sandbox=""
+                onload={() => syncHighlight(selectedSectionId)}
               ></iframe>
             </div>
           </div>
@@ -313,7 +421,7 @@
         {:else if viewport === 'tablet'}
           <!-- Tablet Mockup Frame -->
           <div
-            class="flex h-full w-full flex-col overflow-hidden rounded-[28px] border-[10px] border-slate-850 bg-slate-900 shadow-2xl dark:border-slate-800"
+            class="flex h-full w-full flex-col overflow-hidden rounded-[28px] border-[10px] border-slate-800 bg-slate-900 shadow-2xl dark:border-slate-800"
             style="box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);"
           >
             <!-- Tablet Top Bar with Camera -->
@@ -334,10 +442,12 @@
             <!-- Iframe Container -->
             <div class="flex-1 overflow-hidden bg-white dark:bg-slate-950">
               <iframe
+                bind:this={tabletIframe}
                 title="Landing Page Tablet Preview"
                 srcdoc={fullHtml}
+                sandbox="allow-scripts allow-same-origin"
                 class="h-full w-full border-none"
-                sandbox=""
+                onload={() => syncHighlight(selectedSectionId)}
               ></iframe>
             </div>
           </div>
@@ -356,10 +466,12 @@
             <!-- Iframe Container -->
             <div class="flex-1 overflow-hidden bg-white dark:bg-slate-950">
               <iframe
+                bind:this={mobileIframe}
                 title="Landing Page Mobile Preview"
                 srcdoc={fullHtml}
+                sandbox="allow-scripts allow-same-origin"
                 class="h-full w-full border-none"
-                sandbox=""
+                onload={() => syncHighlight(selectedSectionId)}
               ></iframe>
             </div>
 
@@ -447,9 +559,12 @@
             : 'w-full max-w-[1280px] rounded-xl border border-slate-800'}"
       >
         <iframe
+          bind:this={modalIframe}
           title="Fullscreen Landing Page Preview"
           srcdoc={fullHtml}
+          sandbox="allow-scripts allow-same-origin"
           class="h-full w-full border-none"
+          onload={() => syncHighlight(selectedSectionId)}
         ></iframe>
       </div>
     </div>

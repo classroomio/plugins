@@ -32,7 +32,7 @@
   import TemplatePicker from './components/TemplatePicker.svelte';
   import ThemeEditor from './components/ThemeEditor.svelte';
 
-  type Tab = 'templates' | 'theme' | 'hero' | 'sections';
+  type Tab = 'sections' | 'hero' | 'theme' | 'templates';
   type CourseListResponse = {
     items?: Array<{
       id: string;
@@ -46,7 +46,8 @@
 
   const client: ClassroomIOClient = createClassroomIOClient();
   const api = new StudioApiClient(client);
-  let activeTab = $state<Tab>('templates');
+  let activeTab = $state<Tab>('sections');
+  let selectedSectionId = $state<string | null>(null);
   let templates = $state<StudioLandingPageTemplate[]>([]);
   let activeTemplate = $state<StudioLandingPageTemplate | null>(null);
   let templateName = $state('');
@@ -87,7 +88,7 @@
     } catch {}
 
     try {
-      const response = await client.action<CourseListResponse>('courses:list', { limit: 8, publishedOnly: true });
+      const response = await client.action<CourseListResponse>('courses:list', { limit: 20, publishedOnly: true });
       courses = (response.items ?? []).flatMap((course) => {
         if (!course.slug) return [];
         return [
@@ -113,13 +114,23 @@
     }
   });
 
+  function handleSectionSelected(id: string | null) {
+    selectedSectionId = id;
+    if (id === 'hero') {
+      activeTab = 'hero';
+    } else if (id) {
+      activeTab = 'sections';
+    }
+  }
+
   function beginCreate() {
     editorOpen = true;
     activeTemplate = null;
     templateName = 'Untitled landing page';
-    document = getDefaultDocumentForTemplate('modern');
+    document = JSON.parse(JSON.stringify(getDefaultDocumentForTemplate('modern')));
     savedSnapshot = '';
-    activeTab = 'templates';
+    activeTab = 'sections';
+    selectedSectionId = document.sections[0]?.id ?? null;
     errorMessage = '';
     isSidebarCollapsed = false;
   }
@@ -128,9 +139,10 @@
     editorOpen = true;
     activeTemplate = template;
     templateName = template.name;
-    document = structuredClone(template.document);
+    document = JSON.parse(JSON.stringify(template.document));
     savedSnapshot = JSON.stringify({ name: templateName, document });
-    activeTab = 'templates';
+    activeTab = 'sections';
+    selectedSectionId = document.sections[0]?.id ?? null;
     errorMessage = '';
     isSidebarCollapsed = false;
   }
@@ -145,7 +157,8 @@
   }
 
   function handleSelectTemplate(id: LandingPageTemplateId, nextDocument: LandingPageDocumentV1) {
-    document = nextDocument;
+    document = JSON.parse(JSON.stringify(nextDocument));
+    selectedSectionId = document.sections[0]?.id ?? null;
   }
 
   async function saveTemplate() {
@@ -161,11 +174,12 @@
     isSaving = true;
     errorMessage = '';
     try {
+      const cleanData = JSON.parse(JSON.stringify(validation.data));
       const saved = activeTemplate
-        ? await api.updateTemplate(activeTemplate, name, validation.data)
-        : await api.createTemplate(name, validation.data);
+        ? await api.updateTemplate(activeTemplate, name, cleanData)
+        : await api.createTemplate(name, cleanData);
       activeTemplate = saved;
-      document = structuredClone(saved.document);
+      document = JSON.parse(JSON.stringify(saved.document));
       templateName = saved.name;
       templates = [saved, ...templates.filter((template) => template.id !== saved.id)];
       savedSnapshot = JSON.stringify({ name: templateName, document });
@@ -386,7 +400,7 @@
         <nav
           class="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-slate-200 bg-white py-3 dark:border-slate-800 dark:bg-slate-900 z-20"
         >
-          {#each [{ id: 'templates', label: 'Templates', icon: LayoutTemplateIcon }, { id: 'theme', label: 'Theme', icon: PaletteIcon }, { id: 'hero', label: 'Hero', icon: GlobeIcon }, { id: 'sections', label: 'Sections', icon: LayersIcon }] as item (item.id)}
+          {#each [{ id: 'sections', label: 'Sections', icon: LayersIcon }, { id: 'hero', label: 'Hero', icon: GlobeIcon }, { id: 'theme', label: 'Theme', icon: PaletteIcon }, { id: 'templates', label: 'Templates', icon: LayoutTemplateIcon }] as item (item.id)}
             {@const Icon = item.icon}
             {@const isActive = activeTab === item.id}
             <button
@@ -408,14 +422,20 @@
         <aside
           class="w-80 md:w-96 shrink-0 overflow-y-auto border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 z-10 shadow-sm"
         >
-          {#if activeTab === 'templates'}
-            <TemplatePicker currentDocument={document} onSelectTemplate={handleSelectTemplate} />
-          {:else if activeTab === 'theme'}
-            <ThemeEditor {document} onChange={() => {}} />
+          {#if activeTab === 'sections'}
+            <SectionsEditor
+              {document}
+              {courses}
+              {selectedSectionId}
+              onSelectSection={handleSectionSelected}
+              onChange={() => {}}
+            />
           {:else if activeTab === 'hero'}
             <HeroEditor {document} onChange={() => {}} />
+          {:else if activeTab === 'theme'}
+            <ThemeEditor {document} onChange={() => {}} />
           {:else}
-            <SectionsEditor {document} onChange={() => {}} />
+            <TemplatePicker currentDocument={document} onSelectTemplate={handleSelectTemplate} />
           {/if}
         </aside>
       {/if}
@@ -426,6 +446,8 @@
           {document}
           {organization}
           {courses}
+          {selectedSectionId}
+          onSelectSection={handleSectionSelected}
           bind:isFullPreviewOpen
         />
       </main>

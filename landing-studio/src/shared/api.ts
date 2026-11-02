@@ -33,7 +33,7 @@ export class StudioApiClient {
     const template: StudioLandingPageTemplate = {
       id: crypto.randomUUID(),
       name,
-      document: structuredClone(document),
+      document: JSON.parse(JSON.stringify(document)),
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -49,7 +49,7 @@ export class StudioApiClient {
     const updatedTemplate: StudioLandingPageTemplate = {
       ...template,
       name,
-      document: structuredClone(document),
+      document: JSON.parse(JSON.stringify(document)),
       updatedAt: new Date().toISOString()
     };
     await this.client.storage.set(updatedTemplate.id, updatedTemplate, TEMPLATE_NAMESPACE, 'organization');
