@@ -3,6 +3,7 @@
     generateLandingPageCss,
     type LandingPageCourse,
     type LandingPageDocumentV1,
+    type LandingPageHeroElement,
     type LandingPageOrganization,
     type LandingPageSectionV1
   } from '@cio/landing-pages';
@@ -10,6 +11,9 @@
   import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
   import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
   import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+  import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+  import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+  import ArrowLeftRightIcon from '@lucide/svelte/icons/arrow-left-right';
   import CopyIcon from '@lucide/svelte/icons/copy';
   import TrashIcon from '@lucide/svelte/icons/trash-2';
   import EyeIcon from '@lucide/svelte/icons/eye';
@@ -32,7 +36,7 @@
     viewport?: 'desktop' | 'tablet' | 'mobile';
     zoom?: number;
     selectedSectionId?: string | null;
-    selectedTargetType?: 'heading' | 'subtitle' | 'button' | 'video' | 'courses' | 'contact' | 'section' | 'global';
+    selectedTargetType?: string;
     onSelectElement?: (sectionId: string, targetType: any, text: string) => void;
     onAddSectionAtIndex?: (index: number) => void;
     onChange?: () => void;
@@ -69,9 +73,70 @@
 
   const isHeroSelected = $derived(selectedSectionId === 'hero' && selectedTargetType === 'section');
   const isHeadlineSelected = $derived(selectedSectionId === 'hero' && selectedTargetType === 'heading');
-  const isBadgeSelected = $derived(selectedSectionId === 'hero' && selectedTargetType === 'subtitle' && !!doc.hero.badge);
+  const isBadgeSelected = $derived(selectedSectionId === 'hero' && (selectedTargetType === 'subtitle' || selectedTargetType === 'badge') && !!doc.hero.badge);
   const isSubheadlineSelected = $derived(selectedSectionId === 'hero' && selectedTargetType === 'subtitle' && !doc.hero.badge);
   const isPrimaryActionSelected = $derived(selectedSectionId === 'hero' && selectedTargetType === 'button');
+  const isHeroMediaSelected = $derived(selectedSectionId === 'hero' && selectedTargetType === 'image');
+
+  const DEFAULT_HERO_ORDER: LandingPageHeroElement[] = ['badge', 'headline', 'subheadline', 'actions'];
+  const heroElementOrder = $derived<LandingPageHeroElement[]>(doc.hero.elementOrder ?? DEFAULT_HERO_ORDER);
+  const heroMediaPosition = $derived(doc.hero.mediaPosition ?? 'right');
+  const heroAlignment = $derived(doc.hero.alignment ?? 'left');
+  const heroReverseActions = $derived(!!doc.hero.reverseActions);
+
+  function moveHeroElement(elementKey: 'badge' | 'headline' | 'subheadline' | 'actions', direction: 'up' | 'down', e: MouseEvent | null = null) {
+    e?.stopPropagation();
+    const currentOrder: LandingPageHeroElement[] = [...heroElementOrder];
+    const idx = currentOrder.indexOf(elementKey);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= currentOrder.length) return;
+    const temp = currentOrder[idx];
+    currentOrder[idx] = currentOrder[targetIdx];
+    currentOrder[targetIdx] = temp;
+    doc.hero.elementOrder = currentOrder;
+    onChange();
+  }
+
+  function setHeroMediaPosition(pos: 'left' | 'right' | 'bottom', e: MouseEvent | null = null) {
+    e?.stopPropagation();
+    doc.hero.mediaPosition = pos;
+    onChange();
+  }
+
+  function toggleReverseActions(e: MouseEvent | null = null) {
+    e?.stopPropagation();
+    doc.hero.reverseActions = !doc.hero.reverseActions;
+    onChange();
+  }
+
+  function moveSectionItem(sec: any, fromIdx: number, direction: 'prev' | 'next', e: MouseEvent | null = null) {
+    e?.stopPropagation();
+    if (!sec.items) return;
+    const toIdx = direction === 'prev' ? fromIdx - 1 : fromIdx + 1;
+    if (toIdx < 0 || toIdx >= sec.items.length) return;
+    const item = sec.items[fromIdx];
+    sec.items.splice(fromIdx, 1);
+    sec.items.splice(toIdx, 0, item);
+    onChange();
+  }
+
+  function duplicateSectionItem(sec: any, fromIdx: number, e: MouseEvent | null = null) {
+    e?.stopPropagation();
+    if (!sec.items) return;
+    const cloned = JSON.parse(JSON.stringify(sec.items[fromIdx]));
+    cloned.id = `${sec.type}-${Date.now()}`;
+    if ('title' in cloned) cloned.title = `${cloned.title} (Copy)`;
+    sec.items.splice(fromIdx + 1, 0, cloned);
+    onChange();
+  }
+
+  function deleteSectionItem(sec: any, fromIdx: number, e: MouseEvent | null = null) {
+    e?.stopPropagation();
+    if (!sec.items || sec.items.length <= 1) return;
+    sec.items.splice(fromIdx, 1);
+    onChange();
+  }
 
   function selectElement(secId: string, targetType: any, text = '') {
     onSelectElement?.(secId, targetType, text);
@@ -300,148 +365,281 @@
             </div>
           {/if}
 
-          <div class="cio-lp-container cio-lp-hero-grid {doc.hero.mediaType === 'none' || !doc.hero.mediaUrl ? 'no-media' : ''}">
-            <div class="cio-lp-hero-content">
-              <!-- Hero Badge -->
-              {#if doc.hero.badge}
-                <div
-                  class="cio-lp-hero-badge inline-block cursor-pointer transition-all {isBadgeSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
-                  role="presentation"
-                  contenteditable={editingInlineTarget === 'hero-badge'}
-                  onclick={(e) => { e.stopPropagation(); selectElement('hero', 'subtitle', doc.hero.badge ?? ''); }}
-                  ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-badge'; }}
-                  onblur={(e) => {
-                    editingInlineTarget = null;
-                    doc.hero.badge = (e.currentTarget as HTMLElement).innerText.trim();
-                    onChange();
-                  }}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      (e.currentTarget as HTMLElement).blur();
-                    }
-                  }}
-                >
-                  <span class="cio-lp-badge-text">{doc.hero.badge}</span>
-                  {#if isBadgeSelected}
-                    <div class="builder-handle builder-handle-tl"></div>
-                    <div class="builder-handle builder-handle-tr"></div>
-                    <div class="builder-handle builder-handle-bl"></div>
-                    <div class="builder-handle builder-handle-br"></div>
-                    <div class="builder-tag">Badge</div>
-                  {/if}
-                </div>
-              {/if}
-
-              <!-- Hero Headline (Heading 1) -->
-              <h1
-                class="cio-lp-hero-title cursor-pointer transition-all {isHeadlineSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+          <div class="cio-lp-container cio-lp-hero-grid {doc.hero.mediaType === 'none' || !doc.hero.mediaUrl ? 'no-media' : heroMediaPosition === 'left' ? 'media-left' : heroMediaPosition === 'bottom' ? 'media-bottom' : ''}">
+            <!-- Media column if positioned on LEFT -->
+            {#if heroMediaPosition === 'left' && doc.hero.mediaType === 'image' && doc.hero.mediaUrl}
+              <div
+                class="cio-lp-hero-media cursor-pointer relative group {isHeroMediaSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
                 role="presentation"
-                contenteditable={editingInlineTarget === 'hero-headline'}
-                onclick={(e) => { e.stopPropagation(); selectElement('hero', 'heading', doc.hero.headline); }}
-                ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-headline'; }}
-                onblur={(e) => {
-                  editingInlineTarget = null;
-                  doc.hero.headline = (e.currentTarget as HTMLElement).innerText.trim();
-                  onChange();
-                }}
-                onkeydown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    (e.currentTarget as HTMLElement).blur();
-                  }
-                }}
+                onclick={(e) => { e.stopPropagation(); selectElement('hero', 'image', 'Hero Image'); }}
               >
-                {doc.hero.headline}
-                {#if isHeadlineSelected}
+                {#if isHeroMediaSelected}
+                  <div class="absolute -top-3.5 right-3 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                    <span class="text-[10px] font-bold px-1.5 uppercase">Media</span>
+                    <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('right', e)}>Move Right</button>
+                    <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('bottom', e)}>Move Bottom</button>
+                  </div>
                   <div class="builder-handle builder-handle-tl"></div>
                   <div class="builder-handle builder-handle-tr"></div>
                   <div class="builder-handle builder-handle-bl"></div>
                   <div class="builder-handle builder-handle-br"></div>
-                  <div class="builder-tag">Hero Section &gt; Heading 1</div>
+                  <div class="builder-tag">Hero Image (Left)</div>
                 {/if}
-              </h1>
-
-              <!-- Hero Subheadline -->
-              {#if doc.hero.subheadline}
-                <p
-                  class="cio-lp-hero-sub cursor-pointer transition-all {isSubheadlineSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
-                  role="presentation"
-                  contenteditable={editingInlineTarget === 'hero-sub'}
-                  onclick={(e) => { e.stopPropagation(); selectElement('hero', 'subtitle', doc.hero.subheadline); }}
-                  ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-sub'; }}
-                  onblur={(e) => {
-                    editingInlineTarget = null;
-                    doc.hero.subheadline = (e.currentTarget as HTMLElement).innerText.trim();
-                    onChange();
-                  }}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      (e.currentTarget as HTMLElement).blur();
-                    }
-                  }}
-                >
-                  {doc.hero.subheadline}
-                  {#if isSubheadlineSelected}
-                    <span class="builder-handle builder-handle-tl"></span>
-                    <span class="builder-handle builder-handle-tr"></span>
-                    <span class="builder-handle builder-handle-bl"></span>
-                    <span class="builder-handle builder-handle-br"></span>
-                    <span class="builder-tag">Hero Subtitle</span>
-                  {/if}
-                </p>
-              {/if}
-
-              <!-- Hero Action Buttons -->
-              <div class="cio-lp-hero-actions">
-                <button
-                  type="button"
-                  class="cio-lp-btn-primary cio-lp-btn-lg cursor-pointer transition-all {isPrimaryActionSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
-                  contenteditable={editingInlineTarget === 'hero-btn'}
-                  onclick={(e) => { e.stopPropagation(); selectElement('hero', 'button', doc.hero.primaryAction.label); }}
-                  ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-btn'; }}
-                  onblur={(e) => {
-                    editingInlineTarget = null;
-                    doc.hero.primaryAction.label = (e.currentTarget as HTMLElement).innerText.trim();
-                    onChange();
-                  }}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      (e.currentTarget as HTMLElement).blur();
-                    }
-                  }}
-                >
-                  {doc.hero.primaryAction.label}
-                  {#if isPrimaryActionSelected}
-                    <div class="builder-handle builder-handle-tl"></div>
-                    <div class="builder-handle builder-handle-tr"></div>
-                    <div class="builder-handle builder-handle-bl"></div>
-                    <div class="builder-handle builder-handle-br"></div>
-                    <div class="builder-tag">Primary Action Button</div>
-                  {/if}
-                </button>
-
-                {#if doc.hero.secondaryAction}
-                  <button
-                    type="button"
-                    class="cio-lp-btn-secondary cursor-pointer"
-                    onclick={(e) => { e.stopPropagation(); selectElement('hero', 'button', doc.hero.secondaryAction?.label ?? ''); }}
-                  >
-                    {doc.hero.secondaryAction.label}
-                  </button>
-                {/if}
+                <img src={doc.hero.mediaUrl} alt={doc.hero.headline} class="cio-lp-hero-img" />
               </div>
+            {/if}
+
+            <!-- Hero Content Column with Dynamic Block Ordering -->
+            <div class="cio-lp-hero-content {heroAlignment === 'center' ? 'text-center' : heroAlignment === 'right' ? 'text-right' : ''}">
+              {#each heroElementOrder as elementKey, blockIdx}
+                <!-- 1. Hero Badge -->
+                {#if elementKey === 'badge' && doc.hero.badge}
+                  <div
+                    class="cio-lp-hero-badge inline-block cursor-pointer transition-all relative {isBadgeSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                    role="presentation"
+                    contenteditable={editingInlineTarget === 'hero-badge'}
+                    onclick={(e) => { e.stopPropagation(); selectElement('hero', 'badge', doc.hero.badge ?? ''); }}
+                    ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-badge'; }}
+                    onblur={(e) => {
+                      editingInlineTarget = null;
+                      doc.hero.badge = (e.currentTarget as HTMLElement).innerText.trim();
+                      onChange();
+                    }}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        (e.currentTarget as HTMLElement).blur();
+                      }
+                    }}
+                  >
+                    <span class="cio-lp-badge-text">{doc.hero.badge}</span>
+                    {#if isBadgeSelected}
+                      <div class="absolute -top-3.5 right-0 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                        <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === 0} onclick={(e) => moveHeroElement('badge', 'up', e)} title="Move Up">
+                          <ChevronUpIcon size={11} />
+                        </button>
+                        <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === heroElementOrder.length - 1} onclick={(e) => moveHeroElement('badge', 'down', e)} title="Move Down">
+                          <ChevronDownIcon size={11} />
+                        </button>
+                      </div>
+                      <div class="builder-handle builder-handle-tl"></div>
+                      <div class="builder-handle builder-handle-tr"></div>
+                      <div class="builder-handle builder-handle-bl"></div>
+                      <div class="builder-handle builder-handle-br"></div>
+                      <div class="builder-tag">Badge</div>
+                    {/if}
+                  </div>
+
+                <!-- 2. Hero Headline -->
+                {:else if elementKey === 'headline'}
+                  <h1
+                    class="cio-lp-hero-title cursor-pointer transition-all relative {isHeadlineSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                    role="presentation"
+                    contenteditable={editingInlineTarget === 'hero-headline'}
+                    onclick={(e) => { e.stopPropagation(); selectElement('hero', 'heading', doc.hero.headline); }}
+                    ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-headline'; }}
+                    onblur={(e) => {
+                      editingInlineTarget = null;
+                      doc.hero.headline = (e.currentTarget as HTMLElement).innerText.trim();
+                      onChange();
+                    }}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        (e.currentTarget as HTMLElement).blur();
+                      }
+                    }}
+                  >
+                    {doc.hero.headline}
+                    {#if isHeadlineSelected}
+                      <div class="absolute -top-3.5 right-0 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                        <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === 0} onclick={(e) => moveHeroElement('headline', 'up', e)} title="Move Up">
+                          <ChevronUpIcon size={11} />
+                        </button>
+                        <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === heroElementOrder.length - 1} onclick={(e) => moveHeroElement('headline', 'down', e)} title="Move Down">
+                          <ChevronDownIcon size={11} />
+                        </button>
+                      </div>
+                      <div class="builder-handle builder-handle-tl"></div>
+                      <div class="builder-handle builder-handle-tr"></div>
+                      <div class="builder-handle builder-handle-bl"></div>
+                      <div class="builder-handle builder-handle-br"></div>
+                      <div class="builder-tag">Hero Section &gt; Heading 1</div>
+                    {/if}
+                  </h1>
+
+                <!-- 3. Hero Subheadline -->
+                {:else if elementKey === 'subheadline' && doc.hero.subheadline}
+                  <p
+                    class="cio-lp-hero-sub cursor-pointer transition-all relative {isSubheadlineSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                    role="presentation"
+                    contenteditable={editingInlineTarget === 'hero-sub'}
+                    onclick={(e) => { e.stopPropagation(); selectElement('hero', 'subtitle', doc.hero.subheadline); }}
+                    ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-sub'; }}
+                    onblur={(e) => {
+                      editingInlineTarget = null;
+                      doc.hero.subheadline = (e.currentTarget as HTMLElement).innerText.trim();
+                      onChange();
+                    }}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        (e.currentTarget as HTMLElement).blur();
+                      }
+                    }}
+                  >
+                    {doc.hero.subheadline}
+                    {#if isSubheadlineSelected}
+                      <span class="absolute -top-3.5 right-0 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                        <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === 0} onclick={(e) => moveHeroElement('subheadline', 'up', e)} title="Move Up">
+                          <ChevronUpIcon size={11} />
+                        </button>
+                        <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === heroElementOrder.length - 1} onclick={(e) => moveHeroElement('subheadline', 'down', e)} title="Move Down">
+                          <ChevronDownIcon size={11} />
+                        </button>
+                      </span>
+                      <span class="builder-handle builder-handle-tl"></span>
+                      <span class="builder-handle builder-handle-tr"></span>
+                      <span class="builder-handle builder-handle-bl"></span>
+                      <span class="builder-handle builder-handle-br"></span>
+                      <span class="builder-tag">Hero Subtitle</span>
+                    {/if}
+                  </p>
+
+                <!-- 4. Hero Action Buttons Group -->
+                {:else if elementKey === 'actions'}
+                  <div class="cio-lp-hero-actions relative {heroAlignment === 'center' ? 'justify-center' : heroAlignment === 'right' ? 'justify-end' : ''}">
+                    {#if !heroReverseActions}
+                      <!-- Standard Order: Primary -> Secondary -->
+                      <div class="relative inline-block">
+                        <button
+                          type="button"
+                          class="cio-lp-btn-primary cio-lp-btn-lg cursor-pointer transition-all {isPrimaryActionSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                          contenteditable={editingInlineTarget === 'hero-btn'}
+                          onclick={(e) => { e.stopPropagation(); selectElement('hero', 'button', doc.hero.primaryAction.label); }}
+                          ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-btn'; }}
+                          onblur={(e) => {
+                            editingInlineTarget = null;
+                            doc.hero.primaryAction.label = (e.currentTarget as HTMLElement).innerText.trim();
+                            onChange();
+                          }}
+                          onkeydown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              (e.currentTarget as HTMLElement).blur();
+                            }
+                          }}
+                        >
+                          {doc.hero.primaryAction.label}
+                        </button>
+                        {#if isPrimaryActionSelected}
+                          <div class="absolute -top-3.5 right-0 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                            <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === 0} onclick={(e) => moveHeroElement('actions', 'up', e)} title="Move Group Up">
+                              <ChevronUpIcon size={11} />
+                            </button>
+                            <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === heroElementOrder.length - 1} onclick={(e) => moveHeroElement('actions', 'down', e)} title="Move Group Down">
+                              <ChevronDownIcon size={11} />
+                            </button>
+                            {#if doc.hero.secondaryAction}
+                              <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded flex items-center gap-1" onclick={toggleReverseActions} title="Swap button positions">
+                                <ArrowLeftRightIcon size={10} /> Swap
+                              </button>
+                            {/if}
+                          </div>
+                          <div class="builder-handle builder-handle-tl"></div>
+                          <div class="builder-handle builder-handle-tr"></div>
+                          <div class="builder-handle builder-handle-bl"></div>
+                          <div class="builder-handle builder-handle-br"></div>
+                          <div class="builder-tag">Primary Button</div>
+                        {/if}
+                      </div>
+
+                      {#if doc.hero.secondaryAction}
+                        <button
+                          type="button"
+                          class="cio-lp-btn-secondary cursor-pointer"
+                          onclick={(e) => { e.stopPropagation(); selectElement('hero', 'button', doc.hero.secondaryAction?.label ?? ''); }}
+                        >
+                          {doc.hero.secondaryAction.label}
+                        </button>
+                      {/if}
+                    {:else}
+                      <!-- Reversed Order: Secondary -> Primary -->
+                      {#if doc.hero.secondaryAction}
+                        <button
+                          type="button"
+                          class="cio-lp-btn-secondary cursor-pointer"
+                          onclick={(e) => { e.stopPropagation(); selectElement('hero', 'button', doc.hero.secondaryAction?.label ?? ''); }}
+                        >
+                          {doc.hero.secondaryAction.label}
+                        </button>
+                      {/if}
+
+                      <div class="relative inline-block">
+                        <button
+                          type="button"
+                          class="cio-lp-btn-primary cio-lp-btn-lg cursor-pointer transition-all {isPrimaryActionSelected ? 'builder-selected-box' : 'hover:outline-dashed hover:outline-blue-400'}"
+                          contenteditable={editingInlineTarget === 'hero-btn'}
+                          onclick={(e) => { e.stopPropagation(); selectElement('hero', 'button', doc.hero.primaryAction.label); }}
+                          ondblclick={(e) => { e.stopPropagation(); editingInlineTarget = 'hero-btn'; }}
+                          onblur={(e) => {
+                            editingInlineTarget = null;
+                            doc.hero.primaryAction.label = (e.currentTarget as HTMLElement).innerText.trim();
+                            onChange();
+                          }}
+                          onkeydown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              (e.currentTarget as HTMLElement).blur();
+                            }
+                          }}
+                        >
+                          {doc.hero.primaryAction.label}
+                        </button>
+                        {#if isPrimaryActionSelected}
+                          <div class="absolute -top-3.5 right-0 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                            <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === 0} onclick={(e) => moveHeroElement('actions', 'up', e)} title="Move Group Up">
+                              <ChevronUpIcon size={11} />
+                            </button>
+                            <button type="button" class="p-1 hover:bg-blue-700 rounded disabled:opacity-30" disabled={blockIdx === heroElementOrder.length - 1} onclick={(e) => moveHeroElement('actions', 'down', e)} title="Move Group Down">
+                              <ChevronDownIcon size={11} />
+                            </button>
+                            <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded flex items-center gap-1" onclick={toggleReverseActions} title="Swap button positions">
+                              <ArrowLeftRightIcon size={10} /> Swap
+                            </button>
+                          </div>
+                          <div class="builder-handle builder-handle-tl"></div>
+                          <div class="builder-handle builder-handle-tr"></div>
+                          <div class="builder-handle builder-handle-bl"></div>
+                          <div class="builder-handle builder-handle-br"></div>
+                          <div class="builder-tag">Primary Button</div>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+              {/each}
             </div>
 
-            <!-- Hero Image / Media -->
-            {#if doc.hero.mediaType === 'image' && doc.hero.mediaUrl}
+            <!-- Media column if positioned on RIGHT or BOTTOM -->
+            {#if (heroMediaPosition === 'right' || heroMediaPosition === 'bottom') && doc.hero.mediaType === 'image' && doc.hero.mediaUrl}
               <div
-                class="cio-lp-hero-media cursor-pointer"
+                class="cio-lp-hero-media cursor-pointer relative group {isHeroMediaSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
                 role="presentation"
-                onclick={(e) => { e.stopPropagation(); selectElement('hero', 'section'); }}
+                onclick={(e) => { e.stopPropagation(); selectElement('hero', 'image', 'Hero Image'); }}
               >
+                {#if isHeroMediaSelected}
+                  <div class="absolute -top-3.5 right-3 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                    <span class="text-[10px] font-bold px-1.5 uppercase">Media</span>
+                    <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('left', e)}>Move Left</button>
+                    <button type="button" class="px-1.5 py-0.5 text-[10px] font-bold hover:bg-blue-700 rounded" onclick={(e) => setHeroMediaPosition('bottom', e)}>Move Bottom</button>
+                  </div>
+                  <div class="builder-handle builder-handle-tl"></div>
+                  <div class="builder-handle builder-handle-tr"></div>
+                  <div class="builder-handle builder-handle-bl"></div>
+                  <div class="builder-handle builder-handle-br"></div>
+                  <div class="builder-tag">Hero Image</div>
+                {/if}
                 <img src={doc.hero.mediaUrl} alt={doc.hero.headline} class="cio-lp-hero-img" />
               </div>
             {/if}
@@ -645,9 +843,9 @@
                     <form class="space-y-3.5" onsubmit={(e) => e.preventDefault()}>
                       {#each sec.fields as f}
                         <div class="space-y-1 text-left">
-                          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          <span class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                             {f.label} {#if f.required}<span class="text-red-500">*</span>{/if}
-                          </label>
+                          </span>
                           {#if f.type === 'textarea'}
                             <textarea
                               rows="3"
@@ -717,8 +915,57 @@
                 <!-- FEATURES SECTION CONTENT -->
                 {:else if sec.type === 'features'}
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {#each sec.items as item}
-                      <div class="cio-lp-feature-card rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+                    {#each sec.items as item, itemIdx (item.id)}
+                      {@const isItemSelected = selectedSectionId === sec.id && selectedTargetType === item.id}
+                      <div
+                        class="cio-lp-feature-card rounded-2xl border border-slate-200 bg-white p-5 shadow-xs relative transition-all cursor-pointer {isItemSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
+                        role="presentation"
+                        onclick={(e) => { e.stopPropagation(); selectElement(sec.id, item.id, item.title); }}
+                      >
+                        {#if isItemSelected}
+                          <div class="absolute -top-3.5 right-3 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={itemIdx === 0}
+                              onclick={(e) => moveSectionItem(sec, itemIdx, 'prev', e)}
+                              title="Move Left"
+                            >
+                              <ChevronLeftIcon size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={itemIdx >= sec.items.length - 1}
+                              onclick={(e) => moveSectionItem(sec, itemIdx, 'next', e)}
+                              title="Move Right"
+                            >
+                              <ChevronRightIcon size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded"
+                              onclick={(e) => duplicateSectionItem(sec, itemIdx, e)}
+                              title="Duplicate Item"
+                            >
+                              <CopyIcon size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-red-500 rounded disabled:opacity-30"
+                              disabled={sec.items.length <= 1}
+                              onclick={(e) => deleteSectionItem(sec, itemIdx, e)}
+                              title="Delete Item"
+                            >
+                              <TrashIcon size={11} />
+                            </button>
+                          </div>
+                          <div class="builder-handle builder-handle-tl"></div>
+                          <div class="builder-handle builder-handle-tr"></div>
+                          <div class="builder-handle builder-handle-bl"></div>
+                          <div class="builder-handle builder-handle-br"></div>
+                          <div class="builder-tag">Feature #{itemIdx + 1}</div>
+                        {/if}
                         <div class="size-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
                           <SparklesIcon size={16} />
                         </div>
@@ -731,8 +978,57 @@
                 <!-- TESTIMONIALS SECTION CONTENT -->
                 {:else if sec.type === 'testimonials'}
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {#each sec.items as t}
-                      <div class="cio-lp-testimonial-card rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+                    {#each sec.items as t, tIdx (t.id)}
+                      {@const isItemSelected = selectedSectionId === sec.id && selectedTargetType === t.id}
+                      <div
+                        class="cio-lp-testimonial-card rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 relative transition-all cursor-pointer {isItemSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
+                        role="presentation"
+                        onclick={(e) => { e.stopPropagation(); selectElement(sec.id, t.id, t.name); }}
+                      >
+                        {#if isItemSelected}
+                          <div class="absolute -top-3.5 right-3 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={tIdx === 0}
+                              onclick={(e) => moveSectionItem(sec, tIdx, 'prev', e)}
+                              title="Move Left"
+                            >
+                              <ChevronLeftIcon size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={tIdx >= sec.items.length - 1}
+                              onclick={(e) => moveSectionItem(sec, tIdx, 'next', e)}
+                              title="Move Right"
+                            >
+                              <ChevronRightIcon size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded"
+                              onclick={(e) => duplicateSectionItem(sec, tIdx, e)}
+                              title="Duplicate Item"
+                            >
+                              <CopyIcon size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-red-500 rounded disabled:opacity-30"
+                              disabled={sec.items.length <= 1}
+                              onclick={(e) => deleteSectionItem(sec, tIdx, e)}
+                              title="Delete Item"
+                            >
+                              <TrashIcon size={11} />
+                            </button>
+                          </div>
+                          <div class="builder-handle builder-handle-tl"></div>
+                          <div class="builder-handle builder-handle-tr"></div>
+                          <div class="builder-handle builder-handle-bl"></div>
+                          <div class="builder-handle builder-handle-br"></div>
+                          <div class="builder-tag">Testimonial #{tIdx + 1}</div>
+                        {/if}
                         <p class="text-xs italic text-slate-700 leading-relaxed">“{t.quote}”</p>
                         <div class="flex items-center gap-2.5 pt-2 border-t border-slate-100">
                           <div class="size-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
@@ -750,8 +1046,57 @@
                 <!-- FAQ SECTION CONTENT -->
                 {:else if sec.type === 'faq'}
                   <div class="mx-auto max-w-2xl space-y-3">
-                    {#each sec.items as faq}
-                      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+                    {#each sec.items as faq, faqIdx (faq.id)}
+                      {@const isItemSelected = selectedSectionId === sec.id && selectedTargetType === faq.id}
+                      <div
+                        class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs relative transition-all cursor-pointer {isItemSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
+                        role="presentation"
+                        onclick={(e) => { e.stopPropagation(); selectElement(sec.id, faq.id, faq.question); }}
+                      >
+                        {#if isItemSelected}
+                          <div class="absolute -top-3.5 right-3 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={faqIdx === 0}
+                              onclick={(e) => moveSectionItem(sec, faqIdx, 'prev', e)}
+                              title="Move Up"
+                            >
+                              <ChevronUpIcon size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={faqIdx >= sec.items.length - 1}
+                              onclick={(e) => moveSectionItem(sec, faqIdx, 'next', e)}
+                              title="Move Down"
+                            >
+                              <ChevronDownIcon size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded"
+                              onclick={(e) => duplicateSectionItem(sec, faqIdx, e)}
+                              title="Duplicate FAQ"
+                            >
+                              <CopyIcon size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-red-500 rounded disabled:opacity-30"
+                              disabled={sec.items.length <= 1}
+                              onclick={(e) => deleteSectionItem(sec, faqIdx, e)}
+                              title="Delete FAQ"
+                            >
+                              <TrashIcon size={11} />
+                            </button>
+                          </div>
+                          <div class="builder-handle builder-handle-tl"></div>
+                          <div class="builder-handle builder-handle-tr"></div>
+                          <div class="builder-handle builder-handle-bl"></div>
+                          <div class="builder-handle builder-handle-br"></div>
+                          <div class="builder-tag">FAQ #{faqIdx + 1}</div>
+                        {/if}
                         <h4 class="text-xs font-bold text-slate-900">{faq.question}</h4>
                         <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">{faq.answer}</p>
                       </div>
@@ -773,8 +1118,40 @@
                 <!-- STATS SECTION CONTENT -->
                 {:else if sec.type === 'stats'}
                   <div class="grid grid-cols-2 md:grid-cols-3 gap-6 text-center">
-                    {#each sec.items as st}
-                      <div class="p-4 rounded-xl border border-slate-100 bg-slate-50">
+                    {#each sec.items as st, sIdx (st.id)}
+                      {@const isItemSelected = selectedSectionId === sec.id && selectedTargetType === st.id}
+                      <div
+                        class="p-4 rounded-xl border border-slate-100 bg-slate-50 relative transition-all cursor-pointer {isItemSelected ? 'builder-selected-box ring-2 ring-blue-600' : 'hover:outline-dashed hover:outline-blue-400'}"
+                        role="presentation"
+                        onclick={(e) => { e.stopPropagation(); selectElement(sec.id, st.id, st.value); }}
+                      >
+                        {#if isItemSelected}
+                          <div class="absolute -top-3.5 right-3 z-30 flex items-center gap-1 rounded-lg border border-blue-600 bg-blue-600 p-0.5 text-white shadow-xl">
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={sIdx === 0}
+                              onclick={(e) => moveSectionItem(sec, sIdx, 'prev', e)}
+                              title="Move Left"
+                            >
+                              <ChevronLeftIcon size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              class="p-1 hover:bg-blue-700 rounded disabled:opacity-30"
+                              disabled={sIdx >= sec.items.length - 1}
+                              onclick={(e) => moveSectionItem(sec, sIdx, 'next', e)}
+                              title="Move Right"
+                            >
+                              <ChevronRightIcon size={12} />
+                            </button>
+                          </div>
+                          <div class="builder-handle builder-handle-tl"></div>
+                          <div class="builder-handle builder-handle-tr"></div>
+                          <div class="builder-handle builder-handle-bl"></div>
+                          <div class="builder-handle builder-handle-br"></div>
+                          <div class="builder-tag">Stat #{sIdx + 1}</div>
+                        {/if}
                         <div class="text-2xl font-black text-blue-600">{st.value}</div>
                         <div class="text-xs font-semibold text-slate-600 mt-1">{st.label}</div>
                       </div>

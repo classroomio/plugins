@@ -4,6 +4,7 @@
     type LandingPageCourse,
     type LandingPageDocumentV1,
     type LandingPageFontFamily,
+    type LandingPageHeroElement,
     type LandingPageSectionV1
   } from '@cio/landing-pages';
   import BoldIcon from '@lucide/svelte/icons/bold';
@@ -15,6 +16,8 @@
   import TextAlignJustifyIcon from '@lucide/svelte/icons/text-align-justify';
   import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
   import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+  import ArrowLeftRightIcon from '@lucide/svelte/icons/arrow-left-right';
+  import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
   import CopyIcon from '@lucide/svelte/icons/copy';
   import TrashIcon from '@lucide/svelte/icons/trash-2';
   import EyeIcon from '@lucide/svelte/icons/eye';
@@ -29,7 +32,7 @@
     document: LandingPageDocumentV1;
     courses: LandingPageCourse[];
     selectedSectionId: string | null;
-    selectedTargetType: 'heading' | 'subtitle' | 'button' | 'video' | 'courses' | 'contact' | 'section' | 'global';
+    selectedTargetType: string;
     onSelectSection: (id: string | null) => void;
     onChange: () => void;
   }
@@ -54,6 +57,33 @@
   let lineHeight = $state(1.2);
   let letterSpacing = $state('-0.02em');
   let courseSearchQuery = $state('');
+
+  const DEFAULT_HERO_ORDER: LandingPageHeroElement[] = ['badge', 'headline', 'subheadline', 'actions'];
+  const heroElementOrder = $derived<LandingPageHeroElement[]>(doc.hero.elementOrder ?? DEFAULT_HERO_ORDER);
+  const heroMediaPosition = $derived(doc.hero.mediaPosition ?? 'right');
+  const heroAlignment = $derived(doc.hero.alignment ?? 'left');
+
+  function moveHeroElement(key: 'badge' | 'headline' | 'subheadline' | 'actions', dir: 'up' | 'down') {
+    const list: LandingPageHeroElement[] = [...heroElementOrder];
+    const idx = list.indexOf(key);
+    if (idx < 0) return;
+    const target = dir === 'up' ? idx - 1 : idx + 1;
+    if (target < 0 || target >= list.length) return;
+    const temp = list[idx];
+    list[idx] = list[target];
+    list[target] = temp;
+    doc.hero.elementOrder = list;
+    onChange();
+  }
+
+  function moveItemInArray(arr: any[], idx: number, dir: 'up' | 'down') {
+    const target = dir === 'up' ? idx - 1 : idx + 1;
+    if (target < 0 || target >= arr.length) return;
+    const temp = arr[idx];
+    arr[idx] = arr[target];
+    arr[target] = temp;
+    onChange();
+  }
 
   const currentSection = $derived(
     selectedSectionId && selectedSectionId !== 'hero'
@@ -439,6 +469,108 @@
           </div>
         </div>
       </div>
+
+      <!-- Hero Layout & Reordering Panel -->
+      {#if selectedSectionId === 'hero'}
+        <div class="space-y-3.5 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <h4 class="text-xs font-bold text-slate-900 dark:text-white">Hero Elements & Positioning</h4>
+
+          <!-- Reorderable Blocks List -->
+          <div class="space-y-1.5">
+            <span class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Element Stacking Order</span>
+            <div class="space-y-1">
+              {#each heroElementOrder as elKey, idx}
+                <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium dark:border-slate-800 dark:bg-slate-950">
+                  <div class="flex items-center gap-1.5">
+                    <GripVerticalIcon size={12} class="text-slate-400" />
+                    <span class="capitalize text-slate-800 dark:text-slate-200">
+                      {elKey === 'actions' ? 'Action Buttons' : elKey === 'headline' ? 'Headline 1' : elKey === 'subheadline' ? 'Subtitle' : 'Badge'}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="p-1 hover:bg-white hover:text-blue-600 rounded disabled:opacity-30 dark:hover:bg-slate-800"
+                      disabled={idx === 0}
+                      onclick={() => moveHeroElement(elKey, 'up')}
+                      title="Move Up"
+                    >
+                      <ChevronUpIcon size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      class="p-1 hover:bg-white hover:text-blue-600 rounded disabled:opacity-30 dark:hover:bg-slate-800"
+                      disabled={idx === heroElementOrder.length - 1}
+                      onclick={() => moveHeroElement(elKey, 'down')}
+                      title="Move Down"
+                    >
+                      <ChevronDownIcon size={12} />
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Media Position Toggle -->
+          <div class="space-y-1">
+            <span class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Media (Image) Position</span>
+            <div class="grid grid-cols-3 gap-1.5">
+              {#each [
+                { id: 'left', label: 'Left' },
+                { id: 'right', label: 'Right' },
+                { id: 'bottom', label: 'Bottom' }
+              ] as opt}
+                <button
+                  type="button"
+                  class="rounded-lg border py-1.5 text-xs font-semibold transition-all {heroMediaPosition === opt.id
+                    ? 'border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+                    : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'}"
+                  onclick={() => { doc.hero.mediaPosition = opt.id as any; onChange(); }}
+                >
+                  {opt.label}
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Alignment Toggle -->
+          <div class="space-y-1">
+            <span class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Text & Content Alignment</span>
+            <div class="grid grid-cols-3 gap-1.5">
+              {#each [
+                { id: 'left', label: 'Left' },
+                { id: 'center', label: 'Center' },
+                { id: 'right', label: 'Right' }
+              ] as opt}
+                <button
+                  type="button"
+                  class="rounded-lg border py-1.5 text-xs font-semibold transition-all {heroAlignment === opt.id
+                    ? 'border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
+                    : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'}"
+                  onclick={() => { doc.hero.alignment = opt.id as any; onChange(); }}
+                >
+                  {opt.label}
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Action Buttons Ordering -->
+          {#if doc.hero.secondaryAction}
+            <div class="pt-1">
+              <button
+                type="button"
+                class="w-full flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-blue-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-colors"
+                onclick={() => { doc.hero.reverseActions = !doc.hero.reverseActions; onChange(); }}
+              >
+                <ArrowLeftRightIcon size={12} />
+                <span>Swap Buttons Order (Primary ⇄ Secondary)</span>
+              </button>
+            </div>
+          {/if}
+        </div>
+      {/if}
     {/if}
 
     <!-- 2. SECTION SPECIFIC CONTROLS (Video, Contact, Courses, etc.) -->
@@ -639,13 +771,33 @@
                     <option value="tel">Phone</option>
                     <option value="textarea">Long Text</option>
                   </select>
-                  <button
-                    type="button"
-                    class="p-1 text-slate-400 hover:text-red-500"
-                    onclick={() => { currentSection.fields.splice(fIdx, 1); onChange(); }}
-                  >
-                    <TrashIcon size={12} />
-                  </button>
+                  <div class="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                      disabled={fIdx === 0}
+                      onclick={() => moveItemInArray(currentSection.fields, fIdx, 'up')}
+                      title="Move Up"
+                    >
+                      <ChevronUpIcon size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                      disabled={fIdx === currentSection.fields.length - 1}
+                      onclick={() => moveItemInArray(currentSection.fields, fIdx, 'down')}
+                      title="Move Down"
+                    >
+                      <ChevronDownIcon size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      class="p-1 text-slate-400 hover:text-red-500"
+                      onclick={() => { currentSection.fields.splice(fIdx, 1); onChange(); }}
+                    >
+                      <TrashIcon size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
             {/each}
@@ -733,6 +885,281 @@
               />
             </div>
           </div>
+        </div>
+
+      <!-- FEATURES SPECIFIC -->
+      {:else if currentSection.type === 'features'}
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Feature Items ({currentSection.items.length})</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+              onclick={() => {
+                currentSection.items.push({ id: `f-${Date.now()}`, title: 'New Feature', description: 'Describe this feature' });
+                onChange();
+              }}
+            >
+              <PlusIcon size={12} /> Add Feature
+            </button>
+          </div>
+          {#each currentSection.items as item, fIdx}
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-950 space-y-1.5">
+              <div class="flex items-center justify-between gap-1.5">
+                <input
+                  type="text"
+                  bind:value={item.title}
+                  oninput={onChange}
+                  placeholder="Feature Title"
+                  class="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900"
+                />
+                <div class="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={fIdx === 0}
+                    onclick={() => moveItemInArray(currentSection.items, fIdx, 'up')}
+                    title="Move Up"
+                  >
+                    <ChevronUpIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={fIdx === currentSection.items.length - 1}
+                    onclick={() => moveItemInArray(currentSection.items, fIdx, 'down')}
+                    title="Move Down"
+                  >
+                    <ChevronDownIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30"
+                    disabled={currentSection.items.length <= 1}
+                    onclick={() => { currentSection.items.splice(fIdx, 1); onChange(); }}
+                    title="Delete"
+                  >
+                    <TrashIcon size={12} />
+                  </button>
+                </div>
+              </div>
+              <textarea
+                rows="2"
+                bind:value={item.description}
+                oninput={onChange}
+                placeholder="Feature Description"
+                class="w-full rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              ></textarea>
+            </div>
+          {/each}
+        </div>
+
+      <!-- TESTIMONIALS SPECIFIC -->
+      {:else if currentSection.type === 'testimonials'}
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Testimonials ({currentSection.items.length})</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+              onclick={() => {
+                currentSection.items.push({ id: `t-${Date.now()}`, name: 'Learner Name', role: 'Software Engineer', quote: 'This program changed my career.' });
+                onChange();
+              }}
+            >
+              <PlusIcon size={12} /> Add Review
+            </button>
+          </div>
+          {#each currentSection.items as item, tIdx}
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-950 space-y-1.5">
+              <div class="flex items-center justify-between gap-1.5">
+                <input
+                  type="text"
+                  bind:value={item.name}
+                  oninput={onChange}
+                  placeholder="Author Name"
+                  class="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900"
+                />
+                <input
+                  type="text"
+                  bind:value={item.role}
+                  oninput={onChange}
+                  placeholder="Role"
+                  class="w-24 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] dark:border-slate-700 dark:bg-slate-900"
+                />
+                <div class="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={tIdx === 0}
+                    onclick={() => moveItemInArray(currentSection.items, tIdx, 'up')}
+                    title="Move Up"
+                  >
+                    <ChevronUpIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={tIdx === currentSection.items.length - 1}
+                    onclick={() => moveItemInArray(currentSection.items, tIdx, 'down')}
+                    title="Move Down"
+                  >
+                    <ChevronDownIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30"
+                    disabled={currentSection.items.length <= 1}
+                    onclick={() => { currentSection.items.splice(tIdx, 1); onChange(); }}
+                    title="Delete"
+                  >
+                    <TrashIcon size={12} />
+                  </button>
+                </div>
+              </div>
+              <textarea
+                rows="2"
+                bind:value={item.quote}
+                oninput={onChange}
+                placeholder="Testimonial Quote"
+                class="w-full rounded border border-slate-200 bg-white px-2 py-1 text-[11px] italic text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              ></textarea>
+            </div>
+          {/each}
+        </div>
+
+      <!-- FAQ SPECIFIC -->
+      {:else if currentSection.type === 'faq'}
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">FAQ Items ({currentSection.items.length})</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+              onclick={() => {
+                currentSection.items.push({ id: `faq-${Date.now()}`, question: 'Frequently Asked Question', answer: 'Clear helpful answer.' });
+                onChange();
+              }}
+            >
+              <PlusIcon size={12} /> Add Question
+            </button>
+          </div>
+          {#each currentSection.items as item, fIdx}
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-950 space-y-1.5">
+              <div class="flex items-center justify-between gap-1.5">
+                <input
+                  type="text"
+                  bind:value={item.question}
+                  oninput={onChange}
+                  placeholder="Question"
+                  class="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900"
+                />
+                <div class="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={fIdx === 0}
+                    onclick={() => moveItemInArray(currentSection.items, fIdx, 'up')}
+                    title="Move Up"
+                  >
+                    <ChevronUpIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={fIdx === currentSection.items.length - 1}
+                    onclick={() => moveItemInArray(currentSection.items, fIdx, 'down')}
+                    title="Move Down"
+                  >
+                    <ChevronDownIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30"
+                    disabled={currentSection.items.length <= 1}
+                    onclick={() => { currentSection.items.splice(fIdx, 1); onChange(); }}
+                    title="Delete"
+                  >
+                    <TrashIcon size={12} />
+                  </button>
+                </div>
+              </div>
+              <textarea
+                rows="2"
+                bind:value={item.answer}
+                oninput={onChange}
+                placeholder="Answer"
+                class="w-full rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              ></textarea>
+            </div>
+          {/each}
+        </div>
+
+      <!-- STATS SPECIFIC -->
+      {:else if currentSection.type === 'stats'}
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Stats ({currentSection.items.length})</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+              onclick={() => {
+                currentSection.items.push({ id: `st-${Date.now()}`, value: '99%', label: 'Metric Label' });
+                onChange();
+              }}
+            >
+              <PlusIcon size={12} /> Add Metric
+            </button>
+          </div>
+          {#each currentSection.items as item, sIdx}
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-950 space-y-1.5">
+              <div class="flex items-center justify-between gap-1.5">
+                <input
+                  type="text"
+                  bind:value={item.value}
+                  oninput={onChange}
+                  placeholder="e.g. 10,000+"
+                  class="w-24 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-blue-600 dark:border-slate-700 dark:bg-slate-900"
+                />
+                <input
+                  type="text"
+                  bind:value={item.label}
+                  oninput={onChange}
+                  placeholder="Metric Label"
+                  class="flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900"
+                />
+                <div class="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={sIdx === 0}
+                    onclick={() => moveItemInArray(currentSection.items, sIdx, 'up')}
+                    title="Move Up"
+                  >
+                    <ChevronUpIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30"
+                    disabled={sIdx === currentSection.items.length - 1}
+                    onclick={() => moveItemInArray(currentSection.items, sIdx, 'down')}
+                    title="Move Down"
+                  >
+                    <ChevronDownIcon size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30"
+                    disabled={currentSection.items.length <= 1}
+                    onclick={() => { currentSection.items.splice(sIdx, 1); onChange(); }}
+                    title="Delete"
+                  >
+                    <TrashIcon size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          {/each}
         </div>
       {/if}
     {/if}

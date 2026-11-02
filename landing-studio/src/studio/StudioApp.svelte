@@ -32,7 +32,7 @@
   import LivePreview from './components/LivePreview.svelte';
 
   type ViewportMode = 'desktop' | 'tablet' | 'mobile';
-  type TargetType = 'heading' | 'subtitle' | 'button' | 'video' | 'courses' | 'contact' | 'section' | 'global';
+  type TargetType = 'heading' | 'subtitle' | 'button' | 'video' | 'courses' | 'contact' | 'section' | 'global' | 'badge' | 'image' | string;
   type ToolMode = 'pointer' | 'text' | 'media' | 'layers';
 
   type CourseListResponse = {
