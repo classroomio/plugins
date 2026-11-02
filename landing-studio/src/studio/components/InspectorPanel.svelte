@@ -226,22 +226,52 @@
       <!-- Live Content Field -->
       <div class="space-y-1.5">
         <span class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300">Text Content</span>
-        {#if selectedTargetType === 'heading' || selectedSectionId === 'hero'}
-          <textarea
-            rows="3"
-            bind:value={doc.hero.headline}
-            oninput={onChange}
-            class="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-            placeholder="Hero headline"
-          ></textarea>
+        {#if selectedTargetType === 'heading'}
+          {#if selectedSectionId === 'hero'}
+            <textarea
+              rows="3"
+              bind:value={doc.hero.headline}
+              oninput={onChange}
+              class="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              placeholder="Hero headline"
+            ></textarea>
+          {:else if currentSection && 'title' in currentSection}
+            <textarea
+              rows="3"
+              bind:value={currentSection.title}
+              oninput={onChange}
+              class="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              placeholder="Section title"
+            ></textarea>
+          {/if}
         {:else if selectedTargetType === 'subtitle'}
-          <textarea
-            rows="3"
-            bind:value={doc.hero.subheadline}
-            oninput={onChange}
-            class="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
-            placeholder="Hero subtitle"
-          ></textarea>
+          {#if selectedSectionId === 'hero'}
+            <textarea
+              rows="3"
+              bind:value={doc.hero.subheadline}
+              oninput={onChange}
+              class="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              placeholder="Hero subtitle"
+            ></textarea>
+          {:else if currentSection && 'subtitle' in currentSection}
+            <textarea
+              rows="3"
+              bind:value={currentSection.subtitle}
+              oninput={onChange}
+              class="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              placeholder="Section subtitle"
+            ></textarea>
+          {/if}
+        {:else if selectedTargetType === 'button'}
+          {#if selectedSectionId === 'hero'}
+            <input
+              type="text"
+              bind:value={doc.hero.primaryAction.label}
+              oninput={onChange}
+              class="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+              placeholder="Button label"
+            />
+          {/if}
         {/if}
       </div>
 

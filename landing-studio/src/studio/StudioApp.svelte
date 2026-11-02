@@ -66,6 +66,8 @@
   let selectedSectionId = $state<string | null>('hero');
   let selectedTargetType = $state<TargetType>('heading');
   let activeTool = $state<ToolMode>('pointer');
+  let isAddMenuOpen = $state(false);
+  let insertAtIndex = $state<number | null>(null);
 
   // Undo / Redo History Stack
   let history = $state<string[]>([]);
@@ -312,10 +314,20 @@
         break;
     }
 
-    document.sections.push(newSec);
+    if (insertAtIndex !== null && insertAtIndex >= 0 && insertAtIndex <= document.sections.length) {
+      document.sections.splice(insertAtIndex, 0, newSec);
+      insertAtIndex = null;
+    } else {
+      document.sections.push(newSec);
+    }
     selectedSectionId = newSec.id;
     selectedTargetType = 'section';
     recordSnapshot();
+  }
+
+  function handleAddSectionAtIndex(index: number) {
+    insertAtIndex = index;
+    isAddMenuOpen = true;
   }
 
   function handleSelectTool(tool: ToolMode) {
@@ -493,119 +505,88 @@
   <div
     class="flex h-screen w-screen flex-col overflow-hidden bg-slate-100 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100"
   >
-    <!-- 1. Top Builder Header (Matching Mockup & Subagent Screenshot) -->
+    <!-- 1. Top Builder Header (Streamlined & Uncramped) -->
     <header
       class="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 z-30 shadow-xs"
     >
-      <!-- Left: Back & Template Title -->
-      <div class="flex items-center gap-3">
+      <!-- Left: Back & Editable Template Title & Status -->
+      <div class="flex items-center gap-2.5 min-w-0">
         <button
-          class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-colors"
+          class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-colors shrink-0"
           aria-label="Back to templates"
           onclick={closeEditor}
         >
           <ArrowLeftIcon size={14} />
-          <span>Templates</span>
+          <span class="hidden sm:inline">Templates</span>
         </button>
 
-        <div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
+        <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 shrink-0"></div>
 
-        <div class="flex items-center gap-2">
-          <label for="template-name-input" class="text-[11px] font-bold uppercase tracking-wider text-slate-400 hidden sm:block">Template:</label>
-          <input
-            id="template-name-input"
-            class="w-56 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-900 transition-colors focus:border-blue-600 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            bind:value={templateName}
-            placeholder="Template name"
-          />
-        </div>
+        <input
+          class="w-44 sm:w-60 truncate rounded-md border border-transparent bg-transparent hover:bg-slate-50 focus:bg-white focus:border-blue-500 px-2 py-1 text-xs font-bold text-slate-900 transition-colors focus:outline-none dark:hover:bg-slate-800 dark:focus:bg-slate-900 dark:text-white"
+          bind:value={templateName}
+          placeholder="Template title"
+        />
 
-        {#if !hasUnsavedChanges}
-          <span class="hidden sm:flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            <span class="size-1.5 rounded-full bg-emerald-500"></span> Saved
-          </span>
-        {:else}
-          <span class="hidden sm:flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-            <span class="size-1.5 rounded-full bg-amber-500 animate-pulse"></span> Unsaved changes
-          </span>
-        {/if}
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-medium {hasUnsavedChanges ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'} whitespace-nowrap shrink-0">
+          <span class="size-1.5 rounded-full {hasUnsavedChanges ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}"></span>
+          <span>{hasUnsavedChanges ? 'Unsaved' : 'Saved'}</span>
+        </span>
       </div>
 
-      <!-- Center: Undo/Redo & Viewport Segmented Switcher -->
-      <div class="flex items-center gap-3">
-        <!-- Undo / Redo in Header -->
-        <div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-800 dark:bg-slate-950">
-          <button
-            type="button"
-            class="p-1.5 text-slate-500 hover:text-slate-900 disabled:opacity-30 rounded hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400"
-            disabled={!canUndo}
-            onclick={handleUndo}
-            title="Undo (Cmd+Z)"
-          >
-            <Undo2Icon size={13} />
-          </button>
-          <button
-            type="button"
-            class="p-1.5 text-slate-500 hover:text-slate-900 disabled:opacity-30 rounded hover:bg-white dark:hover:bg-slate-800 dark:text-slate-400"
-            disabled={!canRedo}
-            onclick={handleRedo}
-            title="Redo (Cmd+Shift+Z)"
-          >
-            <Redo2Icon size={13} />
-          </button>
-        </div>
+      <!-- Center: Sleek Viewport Mode Switcher -->
+      <div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-semibold dark:border-slate-800 dark:bg-slate-950 shrink-0">
+        <button
+          type="button"
+          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-all {viewport === 'desktop'
+            ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
+            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
+          onclick={() => (viewport = 'desktop')}
+          title="Desktop (1100px)"
+        >
+          <MonitorIcon size={14} />
+          <span class="hidden md:inline text-[11px]">Desktop</span>
+        </button>
 
-        <!-- Viewport Mode Buttons -->
-        <div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-semibold dark:border-slate-800 dark:bg-slate-950">
-          <button
-            type="button"
-            class="flex items-center gap-1.5 rounded-md px-3 py-1 transition-all {viewport === 'desktop'
-              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
-            onclick={() => (viewport = 'desktop')}
-          >
-            <MonitorIcon size={14} />
-            <span class="hidden md:inline">Desktop (1280px)</span>
-          </button>
+        <button
+          type="button"
+          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-all {viewport === 'tablet'
+            ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
+            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
+          onclick={() => (viewport = 'tablet')}
+          title="Tablet (768px)"
+        >
+          <TabletIcon size={14} />
+          <span class="hidden md:inline text-[11px]">Tablet</span>
+        </button>
 
-          <button
-            type="button"
-            class="flex items-center gap-1.5 rounded-md px-3 py-1 transition-all {viewport === 'tablet'
-              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
-            onclick={() => (viewport = 'tablet')}
-          >
-            <TabletIcon size={14} />
-            <span class="hidden md:inline">Tablet (768px)</span>
-          </button>
-
-          <button
-            type="button"
-            class="flex items-center gap-1.5 rounded-md px-3 py-1 transition-all {viewport === 'mobile'
-              ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
-            onclick={() => (viewport = 'mobile')}
-          >
-            <SmartphoneIcon size={14} />
-            <span class="hidden md:inline">Mobile (375px)</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-all {viewport === 'mobile'
+            ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400'
+            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}"
+          onclick={() => (viewport = 'mobile')}
+          title="Mobile (375px)"
+        >
+          <SmartphoneIcon size={14} />
+          <span class="hidden md:inline text-[11px]">Mobile</span>
+        </button>
       </div>
 
       <!-- Right: Preview & Save Actions -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 shrink-0">
         <button
           type="button"
-          class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+          class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
           onclick={() => (isFullPreviewOpen = true)}
           title="Fullscreen preview"
         >
           <EyeIcon size={14} />
-          <span>Preview</span>
+          <span class="hidden sm:inline">Preview</span>
         </button>
 
         <button
-          class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all"
+          class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all"
           disabled={isSaving || !templateName.trim() || !hasUnsavedChanges}
           onclick={saveTemplate}
         >
@@ -635,6 +616,8 @@
           {selectedSectionId}
           {selectedTargetType}
           onSelectElement={handleElementSelected}
+          onAddSectionAtIndex={handleAddSectionAtIndex}
+          onChange={recordSnapshot}
           bind:isFullPreviewOpen
         />
 
@@ -644,6 +627,7 @@
           {canUndo}
           {canRedo}
           {activeTool}
+          bind:isAddMenuOpen
           onSelectTool={handleSelectTool}
           onAddSection={handleAddSection}
           onUndo={handleUndo}

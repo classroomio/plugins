@@ -29,6 +29,7 @@
     onZoomIn: () => void;
     onZoomOut: () => void;
     onZoomReset: () => void;
+    isAddMenuOpen?: boolean;
   }
 
   let {
@@ -42,10 +43,9 @@
     onRedo,
     onZoomIn,
     onZoomOut,
-    onZoomReset
+    onZoomReset,
+    isAddMenuOpen = $bindable(false)
   }: Props = $props();
-
-  let isAddMenuOpen = $state(false);
 
   const ADD_ITEMS: Array<{
     type: LandingPageSectionV1['type'];
@@ -223,3 +223,4 @@
     </button>
   </div>
 </div>
+
