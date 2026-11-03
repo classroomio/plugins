@@ -1,22 +1,22 @@
-import type { ClassroomIOClient } from '@classroomio/plugin-sdk';
-import type { CertificateDesignV1, StudioTemplate } from './types';
+import type { ClassroomIOClient } from "@classroomio/plugin-sdk";
+import type { CertificateDesign, StudioTemplate } from "./types";
 
-const TEMPLATE_NAMESPACE = 'certificate-templates';
+const TEMPLATE_NAMESPACE = "certificate-templates";
 
 function isStudioTemplate(value: unknown): value is StudioTemplate {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
 
   const template = value as Partial<StudioTemplate>;
   return (
-    typeof template.id === 'string' &&
-    typeof template.name === 'string' &&
-    typeof template.designVersion === 'number' &&
-    typeof template.design === 'object' &&
+    typeof template.id === "string" &&
+    typeof template.name === "string" &&
+    typeof template.designVersion === "number" &&
+    typeof template.design === "object" &&
     template.design !== null &&
-    typeof template.revision === 'number' &&
-    typeof template.isActive === 'boolean' &&
-    typeof template.createdAt === 'string' &&
-    typeof template.updatedAt === 'string'
+    typeof template.revision === "number" &&
+    typeof template.isActive === "boolean" &&
+    typeof template.createdAt === "string" &&
+    typeof template.updatedAt === "string"
   );
 }
 
@@ -25,21 +25,30 @@ export class StudioApiClient {
 
   async listTemplates(): Promise<StudioTemplate[]> {
     try {
-      const records = await this.client.storage.list<StudioTemplate>(TEMPLATE_NAMESPACE, 'organization');
+      const records = await this.client.storage.list<StudioTemplate>(
+        TEMPLATE_NAMESPACE,
+        "organization",
+      );
       return (records || [])
         .map((record) => record.value)
         .filter(isStudioTemplate)
         .filter((template) => template.isActive)
-        .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
+        .sort((first, second) =>
+          second.updatedAt.localeCompare(first.updatedAt),
+        );
     } catch {
       return [];
     }
   }
 
   async getTemplate(id: string): Promise<StudioTemplate> {
-    const template = await this.client.storage.get<StudioTemplate>(id, TEMPLATE_NAMESPACE, 'organization');
+    const template = await this.client.storage.get<StudioTemplate>(
+      id,
+      TEMPLATE_NAMESPACE,
+      "organization",
+    );
     if (!isStudioTemplate(template) || !template.isActive) {
-      throw new Error('Certificate template not found');
+      throw new Error("Certificate template not found");
     }
 
     return template;
@@ -49,7 +58,7 @@ export class StudioApiClient {
     name: string;
     description?: string | null;
     designVersion?: number;
-    design: CertificateDesignV1;
+    design: CertificateDesign;
   }): Promise<StudioTemplate> {
     const context = await this.client.context.get();
     const now = new Date().toISOString();
@@ -62,12 +71,17 @@ export class StudioApiClient {
       design: data.design,
       revision: 1,
       isActive: true,
-      createdBy: '',
+      createdBy: "",
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
-    await this.client.storage.set(template.id, template, TEMPLATE_NAMESPACE, 'organization');
+    await this.client.storage.set(
+      template.id,
+      template,
+      TEMPLATE_NAMESPACE,
+      "organization",
+    );
     return template;
   }
 
@@ -76,21 +90,29 @@ export class StudioApiClient {
     data: {
       name?: string;
       description?: string | null;
-      design?: CertificateDesignV1;
-    }
+      design?: CertificateDesign;
+    },
   ): Promise<StudioTemplate> {
     const currentTemplate = await this.getTemplate(id);
 
     const updatedTemplate: StudioTemplate = {
       ...currentTemplate,
       name: data.name ?? currentTemplate.name,
-      description: data.description === undefined ? currentTemplate.description : data.description,
+      description:
+        data.description === undefined
+          ? currentTemplate.description
+          : data.description,
       design: data.design ?? currentTemplate.design,
       revision: currentTemplate.revision + 1,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
-    await this.client.storage.set(id, updatedTemplate, TEMPLATE_NAMESPACE, 'organization');
+    await this.client.storage.set(
+      id,
+      updatedTemplate,
+      TEMPLATE_NAMESPACE,
+      "organization",
+    );
     return updatedTemplate;
   }
 
@@ -100,9 +122,14 @@ export class StudioApiClient {
       const archived: StudioTemplate = {
         ...currentTemplate,
         isActive: false,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-      await this.client.storage.set(id, archived, TEMPLATE_NAMESPACE, 'organization');
+      await this.client.storage.set(
+        id,
+        archived,
+        TEMPLATE_NAMESPACE,
+        "organization",
+      );
     }
   }
 
@@ -112,7 +139,7 @@ export class StudioApiClient {
       name: `${template.name} (copy)`,
       description: template.description,
       designVersion: template.designVersion,
-      design: template.design
+      design: template.design,
     });
   }
 }

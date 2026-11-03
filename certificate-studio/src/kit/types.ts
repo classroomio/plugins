@@ -1,37 +1,39 @@
-import type { BuiltInCertificateTemplateId } from './constants';
+import type { BuiltInCertificateTemplateId } from "./constants";
 import type {
-  TCertificateBadgeConfigV1,
-  TCertificateBackgroundConfigV1,
-  TCertificateBorderConfigV1,
-  TCertificateCopyOverridesV1,
-  TCertificateDesignV1,
-  TCertificateElementLayoutV1,
-  TCertificateQrCodeConfigV1,
+  TCertificateBadgeConfig,
+  TCertificateBackgroundConfig,
+  TCertificateBorderConfig,
+  TCertificateCopyOverrides,
+  TCertificateDesign,
+  TCertificateElementLayout,
+  TCertificateQrCodeConfig,
   TCertificateShapeFill,
   TCertificateShapeFrame,
   TCertificateShapeObject,
   TCertificateShapeStroke,
-  TCertificateSignatoryV1,
-  TCertificateTypographyConfigV1,
-  TGradientStop
-} from './schema';
+  TCertificateSignatory,
+  TCertificateTypographyConfig,
+  TGradientStop,
+} from "./schema";
 
-export type CertificateTemplateId = BuiltInCertificateTemplateId | (string & {});
+export type CertificateTemplateId =
+  | BuiltInCertificateTemplateId
+  | (string & {});
 
-export type CertificateSignatoryV1 = TCertificateSignatoryV1;
-export type CertificateBorderConfigV1 = TCertificateBorderConfigV1;
-export type CertificateTypographyConfigV1 = TCertificateTypographyConfigV1;
-export type CertificateBackgroundConfigV1 = TCertificateBackgroundConfigV1;
-export type CertificateBadgeConfigV1 = TCertificateBadgeConfigV1;
-export type CertificateQrCodeConfigV1 = TCertificateQrCodeConfigV1;
-export type CertificateElementLayoutV1 = TCertificateElementLayoutV1;
-export type CertificateCopyOverridesV1 = TCertificateCopyOverridesV1;
+export type CertificateSignatory = TCertificateSignatory;
+export type CertificateBorderConfig = TCertificateBorderConfig;
+export type CertificateTypographyConfig = TCertificateTypographyConfig;
+export type CertificateBackgroundConfig = TCertificateBackgroundConfig;
+export type CertificateBadgeConfig = TCertificateBadgeConfig;
+export type CertificateQrCodeConfig = TCertificateQrCodeConfig;
+export type CertificateElementLayout = TCertificateElementLayout;
+export type CertificateCopyOverrides = TCertificateCopyOverrides;
 export type GradientStop = TGradientStop;
 export type CertificateShapeFill = TCertificateShapeFill;
 export type CertificateShapeStroke = TCertificateShapeStroke;
 export type CertificateShapeFrame = TCertificateShapeFrame;
 export type CertificateShapeObject = TCertificateShapeObject;
-export type CertificateDesignV1 = TCertificateDesignV1;
+export type CertificateDesign = TCertificateDesign;
 
 export interface CertificatePreviewData {
   recipientName: string;
@@ -55,10 +57,8 @@ export interface StarterTemplateMeta {
   description: string;
   accentColor: string;
   subtitle: string;
-  initialDesign: CertificateDesignV1;
+  initialDesign: CertificateDesign;
 }
 
-export type CertificateDesign = CertificateDesignV1;
 export type CertificateRenderData = CertificatePreviewData;
-export type CertificateSignatory = CertificateSignatoryV1;
 export type CertificateRenderResult = CertificatePreviewResult;

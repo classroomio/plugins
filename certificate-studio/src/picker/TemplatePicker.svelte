@@ -91,7 +91,6 @@
     try {
       await client.action('apply', {
         schema: 'classroomio.certificate-document',
-        version: 1,
         id: template.id,
         document: template.design,
         name: template.name

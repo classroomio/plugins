@@ -3,12 +3,12 @@
   import {
     renderCertificatePreviewDocument,
     normalizeCertificateDesign,
-    type CertificateDesignV1,
+    type CertificateDesign,
     type CertificatePreviewData,
   } from "../../kit";
 
   interface Props {
-    design: CertificateDesignV1;
+    design: CertificateDesign;
     data: CertificatePreviewData;
   }
 

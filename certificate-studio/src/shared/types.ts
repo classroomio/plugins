@@ -1,5 +1,5 @@
 import type {
-  CertificateDesignV1,
+  CertificateDesign,
   CertificateTemplateId,
   StarterTemplateMeta,
 } from "../kit";
@@ -48,7 +48,7 @@ export interface StudioTemplate {
   name: string;
   description: string | null;
   designVersion: number;
-  design: CertificateDesignV1;
+  design: CertificateDesign;
   revision: number;
   isActive: boolean;
   createdBy: string;
@@ -63,4 +63,4 @@ export interface OrganizationProfile {
   avatarUrl?: string | null;
 }
 
-export type { CertificateDesignV1, CertificateTemplateId, StarterTemplateMeta };
+export type { CertificateDesign, CertificateTemplateId, StarterTemplateMeta };

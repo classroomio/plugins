@@ -5,75 +5,79 @@ export {
   CERTIFICATE_VIEWPORT,
   CERTIFICATE_WIDTH,
   DEFAULT_ACCENT_COLOR,
-  DEFAULT_CERTIFICATE_DESIGN_V1,
+  DEFAULT_CERTIFICATE_DESIGN,
   FONTS_LINK_HREF,
   FONTS_READY_CLASS,
   FONT_OPTIONS,
   PALETTE_SWATCHES,
-  type BuiltInCertificateTemplateId
-} from './constants';
+  type BuiltInCertificateTemplateId,
+} from "./constants";
 
 export {
   HEX_COLOR_PATTERN,
-  ZCertificateBadgeConfigV1,
-  ZCertificateBackgroundConfigV1,
-  ZCertificateBorderConfigV1,
-  ZCertificateCopyOverridesV1,
-  ZCertificateDesignV1,
-  ZCertificateElementLayoutV1,
-  ZCertificateQrCodeConfigV1,
+  ZCertificateBadgeConfig,
+  ZCertificateBackgroundConfig,
+  ZCertificateBorderConfig,
+  ZCertificateCopyOverrides,
+  ZCertificateDesign,
+  ZCertificateElementLayout,
+  ZCertificateQrCodeConfig,
   ZCertificateShapeFrame,
   ZCertificateShapeFill,
   ZCertificateShapeObject,
   ZCertificateShapeStroke,
-  ZCertificateSignatoryV1,
-  ZCertificateTypographyConfigV1,
+  ZCertificateSignatory,
+  ZCertificateTypographyConfig,
   ZGradientStop,
   ZHexColor,
   ZSafeUrl,
-  type TCertificateBadgeConfigV1,
-  type TCertificateBackgroundConfigV1,
-  type TCertificateBorderConfigV1,
-  type TCertificateCopyOverridesV1,
-  type TCertificateDesignV1,
-  type TCertificateElementLayoutV1,
-  type TCertificateQrCodeConfigV1,
+  type TCertificateBadgeConfig,
+  type TCertificateBackgroundConfig,
+  type TCertificateBorderConfig,
+  type TCertificateCopyOverrides,
+  type TCertificateDesign,
+  type TCertificateElementLayout,
+  type TCertificateQrCodeConfig,
   type TCertificateShapeFill,
   type TCertificateShapeFrame,
   type TCertificateShapeObject,
   type TCertificateShapeStroke,
-  type TCertificateSignatoryV1,
-  type TCertificateTypographyConfigV1,
-  type TGradientStop
-} from './schema';
+  type TCertificateSignatory,
+  type TCertificateTypographyConfig,
+  type TGradientStop,
+} from "./schema";
 
 export type {
-  CertificateBadgeConfigV1,
-  CertificateBackgroundConfigV1,
-  CertificateBorderConfigV1,
-  CertificateCopyOverridesV1,
-  CertificateDesignV1,
-  CertificateElementLayoutV1,
+  CertificateBadgeConfig,
+  CertificateBackgroundConfig,
+  CertificateBorderConfig,
+  CertificateCopyOverrides,
+  CertificateDesign,
+  CertificateElementLayout,
   CertificatePreviewData,
   CertificatePreviewResult,
-  CertificateQrCodeConfigV1,
+  CertificateQrCodeConfig,
   CertificateShapeFill,
   CertificateShapeFrame,
   CertificateShapeObject,
   CertificateShapeStroke,
-  CertificateSignatoryV1,
+  CertificateSignatory,
   CertificateTemplateId,
-  CertificateTypographyConfigV1,
+  CertificateTypographyConfig,
   GradientStop,
-  StarterTemplateMeta
-} from './types';
+  StarterTemplateMeta,
+} from "./types";
 
 export {
-  isCertificateDesignV1,
+  isCertificateDesign,
   normalizeCertificateDesign,
   validateCertificateDesign,
   resolveTemplateId,
-  STARTER_TEMPLATES
-} from './normalize';
+  STARTER_TEMPLATES,
+} from "./normalize";
 
-export { renderCertificatePreview, renderCertificatePreviewDocument } from './preview';
+export {
+  renderCertificatePreview,
+  renderCertificatePreviewDocument,
+} from "./preview";
+export { createBlankCertificateDesign } from "./blank";

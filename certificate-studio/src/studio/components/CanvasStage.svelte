@@ -21,14 +21,14 @@
     CERTIFICATE_WIDTH,
     renderCertificatePreviewDocument,
     type CertificatePreviewData,
-    type CertificateDesignV1,
+    type CertificateDesign,
     type CertificateShapeObject,
   } from "../../kit";
   import type { ToolCategory, StudioElementId } from "../../shared/types";
   import CanvasElementZone from "./CanvasElementZone.svelte";
 
   interface Props {
-    design: CertificateDesignV1;
+    design: CertificateDesign;
     previewData: CertificatePreviewData;
     zoom: number;
     selectedTool: ToolCategory;

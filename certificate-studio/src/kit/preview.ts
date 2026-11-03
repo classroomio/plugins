@@ -1,23 +1,27 @@
-import { CERTIFICATE_WIDTH, FONTS_LINK_HREF } from './constants';
-import type { CertificateDesignV1, CertificatePreviewData, CertificatePreviewResult } from './types';
-import { resolveTemplateId } from './normalize';
-import { renderClassique } from './templates/classique';
-import { renderBrutalist } from './templates/brutalist';
-import { renderMinimal } from './templates/minimal';
-import { renderNoir } from './templates/noir';
-import { renderPoster } from './templates/poster';
-import { renderModular } from './templates/modular';
-import { BASE_STYLES, type TemplateRenderer } from './templates/shared';
+import { CERTIFICATE_WIDTH, FONTS_LINK_HREF } from "./constants";
+import type {
+  CertificateDesign,
+  CertificatePreviewData,
+  CertificatePreviewResult,
+} from "./types";
+import { resolveTemplateId } from "./normalize";
+import { renderClassique } from "./templates/classique";
+import { renderBrutalist } from "./templates/brutalist";
+import { renderMinimal } from "./templates/minimal";
+import { renderNoir } from "./templates/noir";
+import { renderPoster } from "./templates/poster";
+import { renderModular } from "./templates/modular";
+import { BASE_STYLES, type TemplateRenderer } from "./templates/shared";
 
 const DEFAULT_PREVIEW_DATA: CertificatePreviewData = {
-  recipientName: 'Jane Doe',
-  courseName: 'Advanced Web Architecture & Systems Design',
+  recipientName: "Jane Doe",
+  courseName: "Advanced Web Architecture & Systems Design",
   courseDescription:
-    'For successfully demonstrating mastery of modern decoupled architectures, plugin ecosystems, and enterprise isolation patterns.',
-  orgName: 'ClassroomIO Academy',
-  orgLogoUrl: '',
-  date: 'October 10, 2026',
-  certificateId: 'CIO-2026-CERT-001'
+    "For successfully demonstrating mastery of modern decoupled architectures, plugin ecosystems, and enterprise isolation patterns.",
+  orgName: "ClassroomIO Academy",
+  orgLogoUrl: "",
+  date: "October 10, 2026",
+  certificateId: "CIO-2026-CERT-001",
 };
 
 const RENDERERS: Record<string, TemplateRenderer> = {
@@ -26,38 +30,40 @@ const RENDERERS: Record<string, TemplateRenderer> = {
   noir: renderNoir,
   poster: renderPoster,
   minimal: renderMinimal,
-  modular: renderModular
+  modular: renderModular,
 };
 
 export function renderCertificatePreview(
-  design: CertificateDesignV1,
-  data?: Partial<CertificatePreviewData>
+  design: CertificateDesign,
+  data?: Partial<CertificatePreviewData>,
 ): CertificatePreviewResult {
   const mergedData: CertificatePreviewData = {
     ...DEFAULT_PREVIEW_DATA,
-    ...(data ?? {})
+    ...(data ?? {}),
   };
 
-  const templateId = resolveTemplateId(design.rendererTemplateId || design.templateId);
+  const templateId = resolveTemplateId(
+    design.rendererTemplateId || design.templateId,
+  );
   const renderer = RENDERERS[templateId] ?? renderClassique;
 
   const { body, styles } = renderer({
     design: {
       ...design,
-      templateId
+      templateId,
     },
-    data: mergedData
+    data: mergedData,
   });
 
   return {
     html: body,
-    styles: `${BASE_STYLES}\n${styles}`
+    styles: `${BASE_STYLES}\n${styles}`,
   };
 }
 
 export function renderCertificatePreviewDocument(
-  design: CertificateDesignV1,
-  data?: Partial<CertificatePreviewData>
+  design: CertificateDesign,
+  data?: Partial<CertificatePreviewData>,
 ): string {
   const { html, styles } = renderCertificatePreview(design, data);
 

@@ -3,11 +3,12 @@
   import Loader2 from "@lucide/svelte/icons/loader-2";
   import X from "@lucide/svelte/icons/x";
   import {
-    DEFAULT_CERTIFICATE_DESIGN_V1,
+    DEFAULT_CERTIFICATE_DESIGN,
     STARTER_TEMPLATES,
+    createBlankCertificateDesign,
     normalizeCertificateDesign,
     renderCertificatePreviewDocument,
-    type CertificateDesignV1,
+    type CertificateDesign,
     type CertificatePreviewData,
   } from "../../kit";
   import type { ClassroomIOClient } from "@classroomio/plugin-sdk";
@@ -48,9 +49,9 @@
 
   let templateName = $state("Untitled Certificate");
 
-  function createStudioDesign(source: unknown): CertificateDesignV1 {
+  function createStudioDesign(source: unknown): CertificateDesign {
     const normalizedDesign = normalizeCertificateDesign(source);
-    const defaultSignatories = DEFAULT_CERTIFICATE_DESIGN_V1.signatories.map(
+    const defaultSignatories = DEFAULT_CERTIFICATE_DESIGN.signatories.map(
       (signatory) => ({ ...signatory }),
     );
 
@@ -64,13 +65,13 @@
     };
   }
 
-  let design = $state<CertificateDesignV1>(
+  let design = $state<CertificateDesign>(
     untrack(() => {
       if (starterId) {
         const match = STARTER_TEMPLATES.find((s) => s.id === starterId);
         if (match) return createStudioDesign(match.initialDesign);
       }
-      return createStudioDesign(DEFAULT_CERTIFICATE_DESIGN_V1);
+      return createBlankCertificateDesign();
     }),
   );
 
@@ -377,7 +378,6 @@
         templateName = snapshot.name;
         design = createStudioDesign(snapshot.design);
       } catch {
-        // Fallback
       }
     }
   }

@@ -69,21 +69,21 @@ The donor is reference material, not production code. Its main files are:
 - `feat/plugin-system:packages/db/src/queries/plugins/org-certificate-preset.ts`
 - `feat/plugin-system:apps/dashboard/src/lib/features/plugins/store/org-certificate-presets.svelte.ts`
 
-| Donor dependency | Donor use | Required replacement |
-| --- | --- | --- |
-| `$app/navigation`, `$app/state` | page routing and URL parameters | In-memory or hash router owned by the plugin; `client.navigation` only for host navigation |
-| `$lib/utils/store/org` | organization ID, name, logo | Bridge context for identity and `client.organization.getProfile()` for approved display fields |
-| `$features/plugins` preset store | template CRUD and caching | Plugin-owned API client calling the Certificate Studio backend |
-| `$features/ui`, `@cio/ui` | dialogs, inputs, buttons, page shell, unsaved-change UI | Svelte components owned by the plugin and semantic styles from `@classroomio/plugin-design` |
-| `$lib` translations | all visible copy | Plugin-owned locale dictionaries selected from bridge context locale |
-| `@cio/certificates` | design types, defaults, normalization, preview | Public `@classroomio/certificate-kit` package |
-| `@lucide/svelte` | icons | Public npm dependency; allowed |
-| core `org_certificate_preset` table | template persistence | Certificate Studio service database |
-| core `/plugins/certificate-studio/presets` routes | template CRUD | Certificate Studio service `/v1/templates` routes |
-| core capability store | enablement | Standard plugin installation status and grants |
-| direct course-editor preset store | presents and applies templates | `certificate.templates` iframe contribution and an apply-template bridge command |
-| `confirm()` | deletion confirmation | Accessible plugin-owned confirmation dialog |
-| host `UnsavedChanges` | navigation protection | Plugin-local dirty-state prompt plus a public host dirty-state bridge contract if host navigation must be blocked |
+| Donor dependency                                  | Donor use                                               | Required replacement                                                                                              |
+| ------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `$app/navigation`, `$app/state`                   | page routing and URL parameters                         | In-memory or hash router owned by the plugin; `client.navigation` only for host navigation                        |
+| `$lib/utils/store/org`                            | organization ID, name, logo                             | Bridge context for identity and `client.organization.getProfile()` for approved display fields                    |
+| `$features/plugins` preset store                  | template CRUD and caching                               | Plugin-owned API client calling the Certificate Studio backend                                                    |
+| `$features/ui`, `@cio/ui`                         | dialogs, inputs, buttons, page shell, unsaved-change UI | Svelte components owned by the plugin and semantic styles from `@classroomio/plugin-design`                       |
+| `$lib` translations                               | all visible copy                                        | Plugin-owned locale dictionaries selected from bridge context locale                                              |
+| `@cio/certificates`                               | design types, defaults, normalization, preview          | Public `@classroomio/certificate-kit` package                                                                     |
+| `@lucide/svelte`                                  | icons                                                   | Public npm dependency; allowed                                                                                    |
+| core `org_certificate_preset` table               | template persistence                                    | Certificate Studio service database                                                                               |
+| core `/plugins/certificate-studio/presets` routes | template CRUD                                           | Certificate Studio service `/v1/templates` routes                                                                 |
+| core capability store                             | enablement                                              | Standard plugin installation status and grants                                                                    |
+| direct course-editor preset store                 | presents and applies templates                          | `certificate.templates` iframe contribution and an apply-template bridge command                                  |
+| `confirm()`                                       | deletion confirmation                                   | Accessible plugin-owned confirmation dialog                                                                       |
+| host `UnsavedChanges`                             | navigation protection                                   | Plugin-local dirty-state prompt plus a public host dirty-state bridge contract if host navigation must be blocked |
 
 The following donor behavior should be preserved:
 
@@ -211,8 +211,8 @@ interface VerifiedPluginLaunchClaims {
   installationId: string;
   organizationId: string;
   userId: string;
-  organizationRole: 'admin' | 'tutor' | 'student';
-  contributionTarget: 'plugin.page' | 'certificate.templates';
+  organizationRole: "admin" | "tutor" | "student";
+  contributionTarget: "plugin.page" | "certificate.templates";
   audience: string;
   grantedScopes: string[];
   expiresAt: string;
@@ -269,7 +269,7 @@ interface ApplyCertificateTemplateRequest {
   externalTemplateId: string;
   externalTemplateVersion: number;
   name: string;
-  design: CertificateDesignV1;
+  design: CertificateDesign;
 }
 ```
 
@@ -316,7 +316,10 @@ Expected contribution shape:
     "ui": {
       "entrypoints": {
         "studio": { "renderMode": "custom", "resource": "dist/studio.html" },
-        "templatePicker": { "renderMode": "custom", "resource": "dist/picker.html" }
+        "templatePicker": {
+          "renderMode": "custom",
+          "resource": "dist/picker.html"
+        }
       }
     },
     "backend": {

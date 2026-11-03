@@ -20,12 +20,6 @@
       "release": true
     },
     {
-      "id": "com.classroomio.landing-studio",
-      "path": "landing-studio",
-      "kind": "first-party",
-      "release": true
-    },
-    {
       "id": "com.classroomio.lesson-acknowledgment",
       "path": "lesson-acknowledgment",
       "kind": "first-party",

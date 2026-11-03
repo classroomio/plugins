@@ -2,7 +2,7 @@
   import {
     PALETTE_SWATCHES,
     FONT_OPTIONS,
-    type CertificateDesignV1,
+    type CertificateDesign,
     type CertificateShapeObject,
   } from "../../kit";
   import Layout from "@lucide/svelte/icons/layout";
@@ -33,7 +33,7 @@
   } from "../../shared/types";
 
   interface Props {
-    design: CertificateDesignV1;
+    design: CertificateDesign;
     selectedTool: ToolCategory;
     selectedElement: StudioElementId | null;
     onSelectElement: (element: StudioElementId | null) => void;
