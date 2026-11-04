@@ -2,6 +2,7 @@ packages:
   - "announcement-banner"
   - "certificate-studio"
   - "course-calendar"
+  - "landing-templates"
   - "lesson-acknowledgment"
   - "linkedin-sharing"
   - "reading-time"

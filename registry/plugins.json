@@ -20,6 +20,12 @@
       "release": true
     },
     {
+      "id": "com.classroomio.landing-templates",
+      "path": "landing-templates",
+      "kind": "first-party",
+      "release": true
+    },
+    {
       "id": "com.classroomio.lesson-acknowledgment",
       "path": "lesson-acknowledgment",
       "kind": "first-party",

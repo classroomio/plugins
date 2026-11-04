@@ -1,0 +1,66 @@
+{
+  "$schema": "https://classroomio.com/schemas/plugin.v1.json",
+  "manifestVersion": 1,
+  "id": "com.classroomio.landing-templates",
+  "name": "Creative Landing Templates",
+  "version": "1.0.0",
+  "description": "Stunning, high-converting creative landing page templates for your academy.",
+  "publisher": "ClassroomIO",
+  "icon": {
+    "resource": "assets/icon.svg"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "classroomio": ">=2.0.0",
+    "pluginApi": "2026-10-08"
+  },
+  "runtime": {
+    "ui": {
+      "entrypoints": {
+        "picker": {
+          "renderMode": "custom",
+          "resource": "dist/picker.html"
+        },
+        "render": {
+          "renderMode": "custom",
+          "resource": "dist/render.html"
+        }
+      }
+    }
+  },
+  "contributes": {
+    "slots": [
+      {
+        "id": "landing-templates-picker",
+        "target": "landing.templates",
+        "renderMode": "custom",
+        "entrypoint": "picker",
+        "title": "Creative Landing Templates",
+        "templates": [
+          {
+            "id": "neo-brutalism",
+            "name": "Neo-Brutalism",
+            "description": "High-contrast borders, bold offset shadows, and playful sticker badges.",
+            "thumbnail": "assets/neo-brutalism-thumb.svg"
+          },
+          {
+            "id": "midnight-aurora",
+            "name": "Midnight Aurora",
+            "description": "Obsidian glassmorphism with glowing ambient aurora mesh gradients.",
+            "thumbnail": "assets/midnight-aurora-thumb.svg"
+          },
+          {
+            "id": "atelier",
+            "name": "Atelier Editorial",
+            "description": "Sophisticated serif typography, book-jacket cards, and literary layouts.",
+            "thumbnail": "assets/atelier-thumb.svg"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "required": []
+  }
+}
+

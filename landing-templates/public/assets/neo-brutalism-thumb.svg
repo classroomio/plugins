@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220" viewBox="0 0 360 220" fill="none">
+  <!-- Butter paper canvas -->
+  <rect width="360" height="220" rx="8" fill="#FEFDF8"/>
+  <rect x="1" y="1" width="358" height="218" rx="7" stroke="#18181B" stroke-width="2"/>
+  
+  <!-- Header bar -->
+  <rect x="20" y="20" width="320" height="36" rx="4" fill="#FDE047" stroke="#18181B" stroke-width="2"/>
+  <circle cx="36" cy="38" r="7" fill="#FB7185" stroke="#18181B" stroke-width="1.5"/>
+  <rect x="52" y="34" width="70" height="8" rx="2" fill="#18181B"/>
+  <rect x="260" y="28" width="64" height="20" rx="3" fill="#18181B"/>
+  <rect x="268" y="34" width="48" height="8" rx="2" fill="#FEFDF8"/>
+
+  <!-- Sticker tag -->
+  <g transform="rotate(-3 50 78)">
+    <rect x="24" y="70" width="80" height="18" rx="3" fill="#A3E635" stroke="#18181B" stroke-width="2"/>
+    <rect x="32" y="76" width="64" height="6" rx="2" fill="#18181B"/>
+  </g>
+
+  <!-- Hero headline -->
+  <rect x="24" y="98" width="180" height="14" rx="2" fill="#18181B"/>
+  <rect x="24" y="118" width="140" height="10" rx="2" fill="#52525B"/>
+
+  <!-- Chunky CTA button with hard shadow -->
+  <rect x="28" y="146" width="100" height="30" rx="4" fill="#18181B"/>
+  <rect x="24" y="142" width="100" height="30" rx="4" fill="#38BDF8" stroke="#18181B" stroke-width="2"/>
+  <rect x="44" y="153" width="60" height="8" rx="2" fill="#18181B"/>
+
+  <!-- Card preview with hard shadow -->
+  <rect x="224" y="78" width="116" height="110" rx="6" fill="#18181B"/>
+  <rect x="220" y="74" width="116" height="110" rx="6" fill="#FFFFFF" stroke="#18181B" stroke-width="2.5"/>
+  <rect x="228" y="82" width="100" height="48" rx="3" fill="#FB7185" stroke="#18181B" stroke-width="1.5"/>
+  <rect x="228" y="138" width="76" height="8" rx="2" fill="#18181B"/>
+  <rect x="228" y="152" width="48" height="6" rx="2" fill="#71717A"/>
+  <rect x="228" y="166" width="36" height="10" rx="2" fill="#FDE047" stroke="#18181B" stroke-width="1.5"/>
+</svg>
+
