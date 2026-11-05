@@ -45,5 +45,20 @@
       "plugin.storage:read",
       "plugin.storage:write"
     ]
+  },
+  "storage": {
+    "documents": [
+      {
+        "namespace": "lesson-acknowledgment",
+        "scope": "user",
+        "schemaVersion": 1,
+        "schema": {
+          "type": "object",
+          "properties": { "acknowledgedAt": { "type": "string", "minLength": 1 } },
+          "required": ["acknowledgedAt"],
+          "additionalProperties": false
+        }
+      }
+    ]
   }
 }

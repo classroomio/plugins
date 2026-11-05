@@ -33,12 +33,12 @@
       {
         "id": "announcement-settings-navigation",
         "title": "Announcement Banner",
-        "location": "organization.settings",
+        "location": "organization.navigation",
         "page": "announcement-settings",
         "icon": {
           "resource": "assets/icon.svg"
         },
-        "visibility": "organization.admin"
+        "visibility": "admin"
       }
     ],
     "slots": [
@@ -59,13 +59,27 @@
     ]
   },
   "dataPolicy": {
-    "storesCustomerData": false,
-    "retentionAfterUninstallDays": 30
+    "storesCustomerData": true,
+    "retentionAfterUninstallDays": 30,
+    "privacyPolicyUrl": "https://classroomio.com/privacy"
   },
   "permissions": {
-    "required": [
-      "plugin.storage:read",
-      "plugin.storage:write"
+    "required": ["plugin.storage:read", "plugin.storage:write"]
+  },
+  "storage": {
+    "documents": [
+      {
+        "namespace": "announcement",
+        "scope": "organization",
+        "schemaVersion": 1,
+        "schema": { "type": "object", "additionalProperties": true }
+      },
+      {
+        "namespace": "announcement",
+        "scope": "user",
+        "schemaVersion": 1,
+        "schema": { "type": "object", "additionalProperties": true }
+      }
     ]
   }
 }

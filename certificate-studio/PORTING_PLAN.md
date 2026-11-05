@@ -321,33 +321,21 @@ Expected contribution shape:
           "resource": "dist/picker.html"
         }
       }
-    },
-    "backend": {
-      "type": "remote",
-      "baseUrl": "https://certificate-studio.services.classroomio.com",
-      "webhookPath": "/v1/webhooks/classroomio"
     }
   },
   "permissions": {
     "required": [
-      "organization.profile:read",
-      "certificate.template:read",
-      "certificate.template:write"
-    ],
-    "optional": ["certificate.issued:read"]
-  },
-  "networkAccess": {
-    "allowedDomains": ["https://certificate-studio.services.classroomio.com"]
-  },
-  "events": {
-    "subscriptions": ["plugin.uninstalled", "organization.deleted"]
+      "certificate.template:write",
+      "plugin.storage:read",
+      "plugin.storage:write"
+    ]
   },
   "contributes": {
     "navigation": [
       {
         "id": "certificate-studio-navigation",
         "title": "Certificate Studio",
-        "location": "organization.settings",
+        "location": "organization.navigation",
         "page": "certificate-studio",
         "icon": "award",
         "visibility": "organization.admin"

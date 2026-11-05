@@ -44,6 +44,7 @@
   <Footer
     organization={viewModel.organization}
     footer={viewModel.footer}
+    locale={viewModel.locale}
   />
 </div>
 

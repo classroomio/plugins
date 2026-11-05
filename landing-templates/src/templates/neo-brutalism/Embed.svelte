@@ -10,12 +10,6 @@
     requestNavigation(href);
   }
 
-  // Safely extract src from embed code if an iframe tag is present
-  const embedSrc = $derived.by(() => {
-    if (!embed.code) return '';
-    const match = embed.code.match(/src=["']([^"']+)["']/i);
-    return match ? match[1] : '';
-  });
 </script>
 
 {#if embed.enabled !== false}
@@ -29,19 +23,13 @@
       </div>
 
       <div class="frame-box">
-        {#if embedSrc}
-          <iframe
-            src={embedSrc}
-            title={embed.title}
-            class="embed-iframe"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
-        {:else}
-          <div class="embed-raw">
-            {@html embed.code}
-          </div>
-        {/if}
+        <iframe
+          src={embed.url}
+          title={embed.title}
+          class="embed-iframe"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
       </div>
 
       {#if embed.secondaryAction}
@@ -108,14 +96,6 @@
     width: 100%;
     height: 100%;
     border: 0;
-  }
-
-  .embed-raw {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .action-row {

@@ -227,10 +227,7 @@
     let resolvedRole: PluginListResponse<PluginCourseRecord>['role'] = 'student';
 
     do {
-      const response = await client.action<PluginListResponse<PluginCourseRecord>, { cursor?: string }>(
-        'courses:list',
-        cursor ? { cursor } : {}
-      );
+      const response = await client.courses.list<PluginListResponse<PluginCourseRecord>>(cursor ? { cursor } : {});
       resolvedRole = response.role;
       items.push(...response.items);
       cursor = response.nextCursor ?? undefined;
@@ -246,14 +243,8 @@
     try {
       const [coursesResponse, lessonsResponse, exercisesResponse] = await Promise.all([
         listCourses(),
-        client.action<PluginListResponse<PluginLessonRecord>, { courseId?: string }>(
-          'lessons:list',
-          lockedCourseId ? { courseId: lockedCourseId } : {}
-        ),
-        client.action<PluginListResponse<PluginExerciseRecord>, { courseId?: string }>(
-          'exercises:list',
-          lockedCourseId ? { courseId: lockedCourseId } : {}
-        )
+        client.lessons.list<PluginListResponse<PluginLessonRecord>>(lockedCourseId ? { courseId: lockedCourseId } : {}),
+        client.exercises.list<PluginListResponse<PluginExerciseRecord>>(lockedCourseId ? { courseId: lockedCourseId } : {})
       ]);
 
       const scopedCourses = lockedCourseId

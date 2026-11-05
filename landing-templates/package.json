@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "svelte-check --tsconfig ./tsconfig.json && node --test tests/*.test.mjs",
     "pack": "cio-plugin build",
     "seed": "cio-plugin dev"
   },

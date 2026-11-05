@@ -13,17 +13,16 @@
   },
   "permissions": {
     "required": [
-      "identity.profile:read",
-      "organization.profile:read",
       "course.metadata:read",
-      "course.content:read",
       "lesson.metadata:read",
-      "lesson.content:read",
       "exercise.metadata:read",
-      "course.enrollment:read",
-      "certificate.issued:read"
+      "certificate.template:write"
     ],
     "optional": []
   },
-  "contributes": {}
+  "contributes": {},
+  "dataPolicy": {
+    "storesCustomerData": false,
+    "retentionAfterUninstallDays": 0
+  }
 }

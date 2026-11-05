@@ -3,15 +3,10 @@
   import { requestNavigation } from '../../shared/bridge';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
 
-  const FALLBACK_IMAGE =
-    'https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
-
   let { hero }: { hero: NormalizedLandingViewModel['hero'] } = $props();
 
   let failedImageSrc = $state<string | null>(null);
-  const heroImageSrc = $derived(
-    hero.image && hero.image !== failedImageSrc ? hero.image : FALLBACK_IMAGE
-  );
+  const heroImageSrc = $derived(hero.image && hero.image !== failedImageSrc ? hero.image : undefined);
 
   function handleAction(href: string, e: MouseEvent) {
     e.preventDefault();

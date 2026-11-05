@@ -1,14 +1,19 @@
 <script lang="ts">
   import type { NormalizedLandingViewModel, PublicLandingFooter } from '../../shared/types';
   import { requestNavigation } from '../../shared/bridge';
+  import { getMessages } from '../../shared/i18n';
 
   let {
     organization,
-    footer
+    footer,
+    locale
   }: {
     organization: NormalizedLandingViewModel['organization'];
     footer: PublicLandingFooter;
+    locale: string;
   } = $props();
+
+  const messages = $derived(getMessages(locale));
 
   function handleLink(href: string, e: MouseEvent) {
     e.preventDefault();
@@ -76,7 +81,7 @@
 
     <div class="bottom-bar">
       <div class="copyright">
-        <span>{footer.copyright || `© ${new Date().getFullYear()} ${organization.name}. All rights reserved.`}</span>
+        <span>{footer.copyright || `© ${new Date().getFullYear()} ${organization.name}. ${messages.rightsReserved}`}</span>
         {#if footer.bottomText}
           <span class="bottom-text">{footer.bottomText}</span>
         {/if}

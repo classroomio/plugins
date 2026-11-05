@@ -70,7 +70,8 @@ export interface PublicLandingEmbed {
   enabled?: boolean;
   title: string;
   description?: string;
-  code: string;
+  url: string;
+  aspectRatio?: string;
   secondaryAction?: PublicLandingLinkItem;
 }
 
@@ -90,6 +91,7 @@ export interface PublicLandingLinks {
 
 export interface NormalizedLandingViewModel {
   templateId: string;
+  locale: string;
   organization: {
     id?: string;
     name: string;
@@ -115,78 +117,6 @@ export interface NormalizedLandingViewModel {
   footer: PublicLandingFooter;
   labels: PublicLandingLabels;
   actions: PublicLandingActions;
-}
-
-export interface PublicLandingPageViewModel {
-  theme?: string;
-  templateId?: string;
-  organization: {
-    id?: string;
-    name: string;
-    siteName?: string;
-    avatarUrl?: string | null;
-    logoUrl?: string;
-  };
-  hero: {
-    heading: string;
-    subheading?: string;
-    eyebrow?: string;
-    image?: string;
-    stats?: Array<{ label: string; value: string }>;
-    primaryAction?: PublicLandingLinkItem;
-    secondaryAction?: PublicLandingLinkItem;
-  };
-  navigation?:
-    | {
-        navItems: PublicLandingLinkItem[];
-        signInLabel?: string;
-        accountLabel?: string;
-        isAuthenticated?: boolean;
-      }
-    | Array<{ label: string; href: string }>;
-  courses: PublicLandingCourse[];
-  coursesLoaded?: boolean;
-  hasMoreCourses?: boolean;
-  links?: {
-    enabled?: boolean;
-    title?: string;
-    heading?: string;
-    description?: string;
-    items?: PublicLandingLinkItem[];
-    cards?: Array<{ icon?: string; title: string; description: string; href: string }>;
-  };
-  callout?: {
-    enabled?: boolean;
-    title?: string;
-    heading?: string;
-    description?: string;
-    action?: PublicLandingLinkItem;
-  };
-  embed?: {
-    enabled?: boolean;
-    type?: 'youtube' | 'vimeo' | 'loom' | 'custom';
-    url?: string;
-    title?: string;
-    description?: string;
-    code?: string;
-    secondaryAction?: PublicLandingLinkItem;
-  };
-  footer?: {
-    tagline?: string;
-    copyright?: string;
-    text?: string;
-    bottomText?: string;
-    links?: PublicLandingLinkItem[];
-    bottomLinks?: PublicLandingLinkItem[];
-    socialLinks?: PublicLandingSocialLink[];
-    socials?: PublicLandingSocialLink[];
-    columns?: Array<{ id: string; heading: string; links: PublicLandingLinkItem[] }>;
-  };
-  labels?: Record<string, string>;
-  actions?: {
-    signIn?: PublicLandingLinkItem;
-    account?: PublicLandingLinkItem;
-  };
 }
 
 export interface TemplateDefinition {

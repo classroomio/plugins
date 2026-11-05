@@ -89,9 +89,8 @@
     errorMessage = null;
 
     try {
-      await client.action('apply', {
-        schema: 'classroomio.certificate-document',
-        id: template.id,
+      await client.certificateTemplates.apply({
+        templateId: template.id,
         document: template.design,
         name: template.name
       });

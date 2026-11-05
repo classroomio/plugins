@@ -10,22 +10,27 @@ describe("Certificate Studio UI & Client Tests", () => {
   it("StudioApiClient loads templates via host storage", async () => {
     const mockClient = {
       storage: {
-        list: vi.fn().mockResolvedValue([
-          {
-            key: "tmpl-1",
-            value: {
-              id: "tmpl-1",
-              name: "Test Template",
-              designVersion: 1,
-              design: DEFAULT_CERTIFICATE_DESIGN,
-              revision: 1,
-              isActive: true,
-              createdAt: new Date().toISOString(),
+        list: vi.fn().mockResolvedValue({
+          items: [
+            {
+              key: "tmpl-1",
+              value: {
+                id: "tmpl-1",
+                name: "Test Template",
+                designVersion: 1,
+                design: DEFAULT_CERTIFICATE_DESIGN,
+                revision: 1,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+              version: 1,
+              schemaVersion: 1,
               updatedAt: new Date().toISOString(),
             },
-            updatedAt: new Date().toISOString(),
-          },
-        ]),
+          ],
+          nextCursor: null,
+        }),
         get: vi.fn(),
         set: vi.fn(),
         delete: vi.fn(),

@@ -29,7 +29,7 @@ export class StudioApiClient {
         TEMPLATE_NAMESPACE,
         "organization",
       );
-      return (records || [])
+      return records.items
         .map((record) => record.value)
         .filter(isStudioTemplate)
         .filter((template) => template.isActive)

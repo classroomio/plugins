@@ -7,6 +7,7 @@
   import Eye from '@lucide/svelte/icons/eye';
   import { TEMPLATES } from '../shared/templates';
   import type { TemplateDefinition } from '../shared/types';
+  import { getMessages } from '../shared/i18n';
 
   const client: ClassroomIOClient = createClassroomIOClient();
 
@@ -14,6 +15,8 @@
   let applyingId = $state<string | null>(null);
   let pickerEl = $state<HTMLElement | null>(null);
   let isReady = $state(false);
+  let locale = $state('en');
+  const messages = $derived(getMessages(locale));
 
   $effect(() => {
     if (!pickerEl || typeof ResizeObserver === 'undefined') return;
@@ -41,6 +44,7 @@
 
     try {
       const currentContext = await client.context.get();
+      locale = currentContext.locale ?? 'en';
       const resource = currentContext.surface?.resource as Record<string, unknown> | undefined;
       const appearance = resource?.appearance;
       if (appearance && typeof appearance === 'object' && 'templateId' in appearance) {
@@ -55,11 +59,9 @@
 
   async function handlePreview(template: TemplateDefinition) {
     try {
-      await client.action('preview', {
-        templateId: template.id
-      });
+      await client.landingTemplates.preview(template.id);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to preview template';
+      const message = err instanceof Error ? err.message : messages.previewFailed;
       void client.ui.toast({
         message,
         variant: 'error'
@@ -71,17 +73,15 @@
     applyingId = template.id;
 
     try {
-      await client.action('select', {
-        templateId: template.id
-      });
+      await client.landingTemplates.select(template.id);
 
       activeTemplateId = template.id;
       void client.ui.toast({
-        message: `Activated "${template.name}" template`,
+        message: messages.activated(template.name),
         variant: 'success'
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to activate template';
+      const message = err instanceof Error ? err.message : messages.activateFailed;
       void client.ui.toast({
         message,
         variant: 'error'
@@ -99,8 +99,8 @@
         <Sparkles size={16} />
       </div>
       <div>
-        <h3 class="title">Creative Landing Page Templates</h3>
-        <p class="subtitle">Select a unique, modern aesthetic for your academy landing page.</p>
+        <h3 class="title">{messages.pickerTitle}</h3>
+        <p class="subtitle">{messages.pickerSubtitle}</p>
       </div>
     </div>
   </div>
@@ -117,17 +117,17 @@
           tabindex="0"
           onclick={() => handlePreview(template)}
           onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handlePreview(template)}
-          aria-label={`Preview ${template.name}`}
+          aria-label={`${messages.preview} ${template.name}`}
         >
           <img src={template.thumbnail} alt={template.name} class="thumbnail" />
           <div class="preview-overlay">
             <Eye size={16} />
-            <span>Preview</span>
+            <span>{messages.preview}</span>
           </div>
           {#if isActive}
             <div class="active-badge">
               <Check size={12} strokeWidth={3} />
-              <span>Active</span>
+              <span>{messages.active}</span>
             </div>
           {/if}
         </div>
@@ -152,12 +152,12 @@
               onclick={() => handlePreview(template)}
             >
               <Eye size={14} />
-              <span>Preview</span>
+              <span>{messages.preview}</span>
             </button>
             {#if isActive}
               <button class="btn btn-active" disabled>
                 <Check size={14} />
-                <span>Selected</span>
+                <span>{messages.selected}</span>
               </button>
             {:else}
               <button
@@ -167,9 +167,9 @@
               >
                 {#if isApplying}
                   <Loader2 size={14} class="spin" />
-                  <span>Applying...</span>
+                  <span>{messages.applying}</span>
                 {:else}
-                  <span>Use Template</span>
+                  <span>{messages.useTemplate}</span>
                 {/if}
               </button>
             {/if}

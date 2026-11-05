@@ -33,12 +33,12 @@
       {
         "id": "certificate-studio-navigation",
         "title": "Certificate Studio",
-        "location": "organization.settings",
+        "location": "organization.navigation",
         "page": "certificate-studio",
         "icon": {
           "resource": "assets/icon.svg"
         },
-        "visibility": "organization.admin"
+        "visibility": "admin"
       }
     ],
     "pages": [
@@ -65,8 +65,19 @@
   },
   "permissions": {
     "required": [
+      "certificate.template:write",
       "plugin.storage:read",
       "plugin.storage:write"
+    ]
+  },
+  "storage": {
+    "documents": [
+      {
+        "namespace": "certificate-templates",
+        "scope": "organization",
+        "schemaVersion": 1,
+        "schema": { "type": "object", "additionalProperties": true }
+      }
     ]
   }
 }

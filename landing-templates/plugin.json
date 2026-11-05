@@ -34,7 +34,9 @@
         "id": "landing-templates-picker",
         "target": "landing.templates",
         "renderMode": "custom",
-        "entrypoint": "picker",
+        "pickerEntrypoint": "picker",
+        "publicRendererEntrypoint": "render",
+        "publicViewModelVersion": 1,
         "title": "Creative Landing Templates",
         "templates": [
           {
@@ -61,6 +63,9 @@
   },
   "permissions": {
     "required": []
+  },
+  "dataPolicy": {
+    "storesCustomerData": false,
+    "retentionAfterUninstallDays": 0
   }
 }
-
