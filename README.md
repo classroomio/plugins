@@ -135,8 +135,8 @@ catalog release remain subject to maintainer review.
 ### 4. Open the pull request
 
 Push your branch and open a pull request against `classroomio/plugins:main`. Complete the pull
-request template and include manual test steps. External contributions remain subject to
-maintainer approval and the repository's required GitHub checks.
+request template, include manual test steps, and sign the ClassroomIO Contributor License Agreement
+when requested.
 
 Pull-request CI runs without production release credentials. It:
 
@@ -171,20 +171,21 @@ artifacts to `.plugin-artifacts/`:
 # In plugins
 pnpm run pack
 
-# In classroomio
-PLUGINS_DEV_PATH=/absolute/path/to/plugins pnpm --filter @cio/db db:seed:plugins
+# In classroomio (auto-discovers ../plugins when cloned side-by-side)
+pnpm --filter @cio/db db:seed:plugins
 ```
 
-Configure the local API's `PLUGIN_ARTIFACTS_PATH` to the same repository output:
+Configure `PLUGIN_ARTIFACTS_PATH` in `apps/api/.env` (in `classroomio`) to point to the artifacts output:
 
 ```bash
-PLUGIN_ARTIFACTS_PATH=/absolute/path/to/plugins/.plugin-artifacts
+PLUGIN_ARTIFACTS_PATH="/absolute/path/to/plugins/.plugin-artifacts"
 ```
 
 The database command registers every packaged official plugin and version, installs or updates them
 for all organizations currently in the local database, and grants each manifest's required
-permissions. Re-run both commands after plugin source, assets, permissions, or manifest data
-changes so the database digest and served artifact stay synchronized.
+permissions. If your plugins checkout is in a non-standard location, provide `PLUGINS_DEV_PATH=/path/to/plugins`
+when running `db:seed:plugins`. Re-run both commands whenever plugin source, assets, permissions, or
+manifest data changes so the database digest and served artifacts stay synchronized.
 
 `cio-plugin dev` remains available in the SDK for targeted development-release API testing, but it
 is not the canonical workflow for maintaining this official repository. Do not run the root
