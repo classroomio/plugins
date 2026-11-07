@@ -100,7 +100,6 @@ pnpm --filter @classroomio/plugin-sdk build
 
 cd ../plugins
 pnpm install --frozen-lockfile
-pnpm build
 pnpm check
 pnpm test
 pnpm run pack
@@ -136,8 +135,8 @@ catalog release remain subject to maintainer review.
 ### 4. Open the pull request
 
 Push your branch and open a pull request against `classroomio/plugins:main`. Complete the pull
-request template, include manual test steps, and sign the ClassroomIO Contributor License Agreement
-when requested.
+request template and include manual test steps. External contributions remain subject to
+maintainer approval and the repository's required GitHub checks.
 
 Pull-request CI runs without production release credentials. It:
 
@@ -151,7 +150,7 @@ Pull-request CI runs without production release credentials. It:
 Maintainers review the source, manifest capabilities, data policy, dependency boundary, tests, and
 generated artifact report before merge.
 
-## Develop one plugin locally
+## Develop and test locally
 
 Most UI plugins expose standard Vite commands. For example:
 
@@ -159,26 +158,37 @@ Most UI plugins expose standard Vite commands. For example:
 pnpm --dir announcement-banner run dev
 pnpm --dir announcement-banner run build
 pnpm --dir announcement-banner run test
-pnpm --dir announcement-banner run pack
 ```
 
 `dev` serves the plugin interface directly for frontend work. It does not install the plugin into
 ClassroomIO.
 
-To test a packaged plugin inside a local ClassroomIO organization, run the local ClassroomIO API,
-configure its `PLUGIN_ARTIFACTS_PATH` to point at this repository's `.plugin-artifacts` directory,
-and provide an organization API key with `plugin:development`:
+For integrated testing, use the repository packager and the ClassroomIO database seeder. The
+packager removes old build output, rebuilds every release-enabled plugin, and writes canonical
+artifacts to `.plugin-artifacts/`:
 
 ```bash
-export CLASSROOMIO_API_URL=http://localhost:3002
-export CLASSROOMIO_DEV_TOKEN=<organization-api-key>
-export CLASSROOMIO_ORG_ID=<organization-id>
+# In plugins
+pnpm run pack
 
-pnpm --dir announcement-banner run seed -- --org "$CLASSROOMIO_ORG_ID"
+# In classroomio
+PLUGINS_DEV_PATH=/absolute/path/to/plugins pnpm --filter @cio/db db:seed:plugins
 ```
 
-The development installation endpoint is unavailable in production and limits the installation to
-the API key's organization.
+Configure the local API's `PLUGIN_ARTIFACTS_PATH` to the same repository output:
+
+```bash
+PLUGIN_ARTIFACTS_PATH=/absolute/path/to/plugins/.plugin-artifacts
+```
+
+The database command registers every packaged official plugin and version, installs or updates them
+for all organizations currently in the local database, and grants each manifest's required
+permissions. Re-run both commands after plugin source, assets, permissions, or manifest data
+changes so the database digest and served artifact stay synchronized.
+
+`cio-plugin dev` remains available in the SDK for targeted development-release API testing, but it
+is not the canonical workflow for maintaining this official repository. Do not run the root
+workspace as a single plugin; it has no root `plugin.json`.
 
 ## Release after merge
 

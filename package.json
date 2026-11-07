@@ -13,7 +13,6 @@
     "check": "node scripts/run-registry-script.mjs check",
     "test": "node scripts/run-registry-script.mjs test",
     "pack": "cio-plugin build --registry registry/plugins.json",
-    "seed": "cio-plugin dev",
     "release:verify": "node scripts/verify-release.mjs",
     "release:request": "node scripts/create-release-request.mjs"
   },
