@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "id": "com.classroomio.reading-time",
   "name": "Reading Time Estimator",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Shows learners an estimated reading time and word count for the current lesson.",
   "publisher": "classroomio",
   "icon": {
@@ -33,7 +33,7 @@
     "slots": [
       {
         "id": "reading-time-lesson-widget",
-        "target": "lesson.after",
+        "target": "lesson.before",
         "renderMode": "custom",
         "entrypoint": "lessonWidget",
         "title": "Lesson reading time"
