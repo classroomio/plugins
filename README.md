@@ -187,6 +187,15 @@ permissions. If your plugins checkout is in a non-standard location, provide `PL
 when running `db:seed:plugins`. Re-run both commands whenever plugin source, assets, permissions, or
 manifest data changes so the database digest and served artifacts stay synchronized.
 
+### Local environment variables
+
+- **In `plugins`**: No `.env` file is required for the canonical `pnpm run pack` workflow.
+- **In `classroomio`**: Set `PLUGIN_ARTIFACTS_PATH` in `apps/api/.env` so the local ClassroomIO API serves iframe assets directly from `.plugin-artifacts/`:
+  ```bash
+  PLUGIN_ARTIFACTS_PATH="/absolute/path/to/plugins/.plugin-artifacts"
+  ```
+- **Optional SDK CLI (`cio-plugin dev` / `cio-plugin seed`)**: Only needed when testing a single plugin development server without building the full catalog. Set `CLASSROOMIO_API_URL`, `CLASSROOMIO_DEV_TOKEN`, and `CLASSROOMIO_ORG_ID` as shown in [`.env.example`](.env.example).
+
 `cio-plugin dev` remains available in the SDK for targeted development-release API testing, but it
 is not the canonical workflow for maintaining this official repository. Do not run the root
 workspace as a single plugin; it has no root `plugin.json`.
@@ -209,8 +218,8 @@ For an approved release, the workflow:
 Existing objects are never silently overwritten. A retry is accepted only when the existing bytes
 match the locally verified artifact.
 
-Maintainer-only repository protections and production environment requirements are documented in
-[`.github/BRANCH_PROTECTION.md`](.github/BRANCH_PROTECTION.md) and [`.env.example`](.env.example).
+Maintainer-only repository protections and production release infrastructure are documented in
+[`.github/BRANCH_PROTECTION.md`](.github/BRANCH_PROTECTION.md), [`.github/PRODUCTION_DEPLOYMENT.md`](.github/PRODUCTION_DEPLOYMENT.md), and [`.env.example`](.env.example).
 
 ## Repository rules enforced by verification
 

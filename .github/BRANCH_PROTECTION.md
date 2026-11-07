@@ -11,4 +11,4 @@ Protect `main` with these GitHub rules:
 - Restrict direct pushes to platform maintainers.
 - Create the protected `plugin-production` Environment with required maintainer approval and no unprotected branches.
 
-Configure the Environment and repository values listed in `.env.example`. R2 credentials must be limited to object access in the production plugin bucket.
+Configure the Environment and repository values according to [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) and [`.env.example`](../.env.example). R2 credentials must be limited to object access in the production plugin bucket.
