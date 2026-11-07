@@ -7,8 +7,7 @@
     CalendarEvent,
     PluginCourseRecord,
     PluginExerciseRecord,
-    PluginLessonRecord,
-    PluginListResponse
+    PluginLessonRecord
   } from './types';
   import CalendarIcon from '@lucide/svelte/icons/calendar';
   import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
@@ -184,7 +183,7 @@
   });
 
   const selectedDayCell = $derived(
-    selectedDayKey ? monthGridCells.find((cell) => cell.dateKey === selectedDayKey) ?? null : null
+    selectedDayKey ? (monthGridCells.find((cell) => cell.dateKey === selectedDayKey) ?? null) : null
   );
 
   const sidebarDisplayEvents = $derived.by(() => {
@@ -224,16 +223,40 @@
   async function listCourses() {
     const items: PluginCourseRecord[] = [];
     let cursor: string | undefined;
-    let resolvedRole: PluginListResponse<PluginCourseRecord>['role'] = 'student';
 
     do {
-      const response = await client.courses.list<PluginListResponse<PluginCourseRecord>>(cursor ? { cursor } : {});
-      resolvedRole = response.role;
+      const response = await client.courses.list(cursor ? { cursor } : {});
       items.push(...response.items);
       cursor = response.nextCursor ?? undefined;
     } while (cursor);
 
-    return { role: resolvedRole, items };
+    return items;
+  }
+
+  async function listLessons(courseId: string) {
+    const items: PluginLessonRecord[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const response = await client.lessons.list({ courseId, cursor });
+      items.push(...response.items);
+      cursor = response.nextCursor ?? undefined;
+    } while (cursor);
+
+    return items;
+  }
+
+  async function listExercises(courseId: string) {
+    const items: PluginExerciseRecord[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const response = await client.exercises.list({ courseId, cursor });
+      items.push(...response.items);
+      cursor = response.nextCursor ?? undefined;
+    } while (cursor);
+
+    return items;
   }
 
   async function loadSchedule() {
@@ -241,19 +264,19 @@
     error = null;
 
     try {
-      const [coursesResponse, lessonsResponse, exercisesResponse] = await Promise.all([
-        listCourses(),
-        client.lessons.list<PluginListResponse<PluginLessonRecord>>(lockedCourseId ? { courseId: lockedCourseId } : {}),
-        client.exercises.list<PluginListResponse<PluginExerciseRecord>>(lockedCourseId ? { courseId: lockedCourseId } : {})
-      ]);
+      const courseItems = await listCourses();
 
       const scopedCourses = lockedCourseId
-        ? coursesResponse.items.filter((courseItem) => courseItem.id === lockedCourseId)
-        : coursesResponse.items;
+        ? courseItems.filter((courseItem) => courseItem.id === lockedCourseId)
+        : courseItems;
 
-      const derivedEvents = buildCalendarEvents(scopedCourses, lessonsResponse.items, exercisesResponse.items);
+      const lessonPages = await Promise.all(scopedCourses.map((courseItem) => listLessons(courseItem.id)));
+      const exercisePages = await Promise.all(scopedCourses.map((courseItem) => listExercises(courseItem.id)));
+      const lessonItems = lessonPages.flat();
+      const exerciseItems = exercisePages.flat();
 
-      role = coursesResponse.role;
+      const derivedEvents = buildCalendarEvents(scopedCourses, lessonItems, exerciseItems);
+
       courses = scopedCourses.map((courseItem) => ({
         id: courseItem.id,
         title: courseItem.title,
@@ -290,11 +313,7 @@
     if (viewMode === 'month') {
       currentAnchor = new Date(currentYear, currentMonth - 1, 1);
     } else if (viewMode === 'week') {
-      currentAnchor = new Date(
-        currentAnchor.getFullYear(),
-        currentAnchor.getMonth(),
-        currentAnchor.getDate() - 7
-      );
+      currentAnchor = new Date(currentAnchor.getFullYear(), currentAnchor.getMonth(), currentAnchor.getDate() - 7);
     }
   }
 
@@ -302,11 +321,7 @@
     if (viewMode === 'month') {
       currentAnchor = new Date(currentYear, currentMonth + 1, 1);
     } else if (viewMode === 'week') {
-      currentAnchor = new Date(
-        currentAnchor.getFullYear(),
-        currentAnchor.getMonth(),
-        currentAnchor.getDate() + 7
-      );
+      currentAnchor = new Date(currentAnchor.getFullYear(), currentAnchor.getMonth(), currentAnchor.getDate() + 7);
     }
   }
 
@@ -339,6 +354,7 @@
     try {
       const ctx = await client.context.get();
       context = ctx;
+      role = ctx.actor?.role === 'learner' || ctx.actor?.role === 'public' ? 'student' : (ctx.actor?.role ?? 'student');
       if (ctx.surface?.target === 'course.sidebar') {
         viewMode = 'month';
         await reportSidebarHeight();
@@ -496,7 +512,8 @@
       <div class="sw-section-header">
         <span>
           {#if selectedDayCell}
-            {selectedDayCell.date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ({selectedDayCell.events.length})
+            {selectedDayCell.date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ({selectedDayCell.events
+              .length})
           {:else}
             SCHEDULED EVENTS
           {/if}
@@ -535,11 +552,7 @@
             {@const hasRelated = Boolean(event.relatedItems && event.relatedItems.length > 0)}
             {@const isExpanded = expandedEventIds.has(event.id)}
             <div class="sw-event-card">
-              <button
-                type="button"
-                class="sw-event-row"
-                onclick={() => toggleEventExpanded(event.id)}
-              >
+              <button type="button" class="sw-event-row" onclick={() => toggleEventExpanded(event.id)}>
                 <div class="sw-date-badge">
                   <span class="sw-date-day">{badge.day}</span>
                   <span class="sw-date-mon">{badge.month}</span>
@@ -550,7 +563,10 @@
                   </span>
                   <span class="sw-event-sub">
                     {#if hasRelated && event.relatedItems}
-                      {event.relatedItems.length} lesson{event.relatedItems.length === 1 ? '' : 's'} & exercise{event.relatedItems.length === 1 ? '' : 's'}
+                      {event.relatedItems.length} lesson{event.relatedItems.length === 1 ? '' : 's'} & exercise{event
+                        .relatedItems.length === 1
+                        ? ''
+                        : 's'}
                     {:else if event.type === 'live_session'}
                       {formatEventTime(event.startsAt)} • Live session
                     {:else}
@@ -579,12 +595,7 @@
                       <span>{event.title}</span>
                       <span>{formatFullDate(event.startsAt)} • {formatEventTime(event.startsAt)}</span>
                       {#if event.lesson?.callUrl}
-                        <a
-                          href={event.lesson.callUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="sw-join-link"
-                        >
+                        <a href={event.lesson.callUrl} target="_blank" rel="noopener noreferrer" class="sw-join-link">
                           Join Live Session ↗
                         </a>
                       {/if}
@@ -599,403 +610,394 @@
     </div>
   </div>
 {:else}
-<div class="calendar-shell">
-  <header class="top-bar">
-    <div class="brand-group">
-      <div class="brand-icon">
-        <CalendarIcon size={20} />
-      </div>
-      <div>
-        <div class="title-row">
-          <h1>Course & Live Calendar</h1>
-          <span class="role-badge" class:staff={role === 'admin' || role === 'tutor'}>
-            {#if role === 'admin'}
-              <ShieldIcon size={12} />
-              <span>Admin · All Courses</span>
-            {:else if role === 'tutor'}
-              <SparklesIcon size={12} />
-              <span>Instructor View</span>
-            {:else}
-              <GraduationCapIcon size={12} />
-              <span>Learner · Enrolled Courses</span>
-            {/if}
-          </span>
-          <span class="readonly-pill">View only</span>
+  <div class="calendar-shell">
+    <header class="top-bar">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <CalendarIcon size={20} />
         </div>
-        <p class="subtitle">
-          <GlobeIcon size={12} />
-          <span>Times shown in your local timezone ({localTimezone})</span>
-        </p>
-      </div>
-    </div>
-
-    <div class="stats-strip">
-      <div class="stat-chip">
-        <span class="stat-dot upcoming"></span>
-        <span class="stat-value">{statsSummary.upcomingCount}</span>
-        <span class="stat-label">Upcoming Live</span>
-      </div>
-      {#if statsSummary.liveCount > 0}
-        <div class="stat-chip live">
-          <span class="stat-dot live"></span>
-          <span class="stat-value">{statsSummary.liveCount}</span>
-          <span class="stat-label">Live Now</span>
+        <div>
+          <div class="title-row">
+            <h1>Course & Live Calendar</h1>
+            <span class="role-badge" class:staff={role === 'admin' || role === 'tutor'}>
+              {#if role === 'admin'}
+                <ShieldIcon size={12} />
+                <span>Admin · All Courses</span>
+              {:else if role === 'tutor'}
+                <SparklesIcon size={12} />
+                <span>Instructor View</span>
+              {:else}
+                <GraduationCapIcon size={12} />
+                <span>Learner · Enrolled Courses</span>
+              {/if}
+            </span>
+            <span class="readonly-pill">View only</span>
+          </div>
+          <p class="subtitle">
+            <GlobeIcon size={12} />
+            <span>Times shown in your local timezone ({localTimezone})</span>
+          </p>
         </div>
-      {/if}
-      <div class="stat-chip">
-        <span class="stat-dot completed"></span>
-        <span class="stat-value">{statsSummary.activityCount}</span>
-        <span class="stat-label">Deadlines</span>
       </div>
-    </div>
-  </header>
 
-  <section class="controls-bar">
-    <div class="period-nav">
-      <button type="button" class="btn-outline" onclick={jumpToToday}>Today</button>
-      {#if viewMode !== 'agenda'}
-        <div class="step-buttons">
-          <button type="button" class="btn-icon" onclick={stepPrevious} aria-label="Previous period">
-            <ChevronLeftIcon size={16} />
-          </button>
-          <button type="button" class="btn-icon" onclick={stepNext} aria-label="Next period">
-            <ChevronRightIcon size={16} />
-          </button>
+      <div class="stats-strip">
+        <div class="stat-chip">
+          <span class="stat-dot upcoming"></span>
+          <span class="stat-value">{statsSummary.upcomingCount}</span>
+          <span class="stat-label">Upcoming Live</span>
         </div>
-      {/if}
-      <h2 class="period-label">{headerPeriodLabel}</h2>
-    </div>
-
-    <div class="filters-group">
-      {#if !lockedCourseId && courses.length > 0}
-        <div class="select-wrap">
-          <FilterIcon size={13} />
-          <select bind:value={selectedCourseId} aria-label="Filter by course">
-            <option value="all">All Courses ({courses.length})</option>
-            {#each courses as courseItem (courseItem.id)}
-              <option value={courseItem.id}>{courseItem.title}</option>
-            {/each}
-          </select>
+        {#if statsSummary.liveCount > 0}
+          <div class="stat-chip live">
+            <span class="stat-dot live"></span>
+            <span class="stat-value">{statsSummary.liveCount}</span>
+            <span class="stat-label">Live Now</span>
+          </div>
+        {/if}
+        <div class="stat-chip">
+          <span class="stat-dot completed"></span>
+          <span class="stat-value">{statsSummary.activityCount}</span>
+          <span class="stat-label">Deadlines</span>
         </div>
-      {/if}
+      </div>
+    </header>
 
-      {#if !isSidebarSurface}
-        <div class="select-wrap">
-          <select bind:value={selectedTypeFilter} aria-label="Filter by event type">
-            <option value="all">All Event Types</option>
-            <option value="live_session">Live Sessions</option>
-            <option value="exercise_due">Exercise Due Dates</option>
-            <option value="certificate_deadline">Course Deadlines</option>
-          </select>
-        </div>
-
-        <input
-          type="search"
-          class="search-input"
-          placeholder="Search course, lesson, or instructor..."
-          bind:value={searchQuery}
-        />
-      {/if}
-
-      <div class="view-switcher" role="tablist" aria-label="Calendar view mode">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'month'}
-          class:active={viewMode === 'month'}
-          onclick={() => (viewMode = 'month')}
-        >
-          Month
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'week'}
-          class:active={viewMode === 'week'}
-          onclick={() => (viewMode = 'week')}
-        >
-          Week
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={viewMode === 'agenda'}
-          class:active={viewMode === 'agenda'}
-          onclick={() => (viewMode = 'agenda')}
-        >
-          <ListIcon size={13} />
-          <span>Agenda</span>
-        </button>
+    <section class="controls-bar">
+      <div class="period-nav">
+        <button type="button" class="btn-outline" onclick={jumpToToday}>Today</button>
+        {#if viewMode !== 'agenda'}
+          <div class="step-buttons">
+            <button type="button" class="btn-icon" onclick={stepPrevious} aria-label="Previous period">
+              <ChevronLeftIcon size={16} />
+            </button>
+            <button type="button" class="btn-icon" onclick={stepNext} aria-label="Next period">
+              <ChevronRightIcon size={16} />
+            </button>
+          </div>
+        {/if}
+        <h2 class="period-label">{headerPeriodLabel}</h2>
       </div>
 
-      <button
-        type="button"
-        class="btn-icon"
-        onclick={loadSchedule}
-        disabled={loading}
-        title="Refresh schedule"
-        aria-label="Refresh schedule"
-      >
-        <RefreshCwIcon size={15} class={loading ? 'spin' : ''} />
-      </button>
-    </div>
-  </section>
+      <div class="filters-group">
+        {#if !lockedCourseId && courses.length > 0}
+          <div class="select-wrap">
+            <FilterIcon size={13} />
+            <select bind:value={selectedCourseId} aria-label="Filter by course">
+              <option value="all">All Courses ({courses.length})</option>
+              {#each courses as courseItem (courseItem.id)}
+                <option value={courseItem.id}>{courseItem.title}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
 
-  <main class="calendar-body">
-    {#if loading}
-      <div class="empty-state">
-        <Loader2Icon size={28} class="spin accent-icon" />
-        <h3>Loading course schedule...</h3>
-        <p>Syncing live sessions and deadlines across your courses.</p>
-      </div>
-    {:else if error}
-      <div class="empty-state error">
-        <h3>Could not load schedule</h3>
-        <p>{error}</p>
-        <button type="button" class="btn-primary" onclick={loadSchedule}>Try Again</button>
-      </div>
-    {:else if viewMode === 'month'}
-      <div class="month-layout">
-        <div class="month-grid-container">
-          <div class="weekday-header">
-            {#each weekdayLabels as dayLabel (dayLabel)}
-              <div class="weekday-cell">{dayLabel}</div>
-            {/each}
+        {#if !isSidebarSurface}
+          <div class="select-wrap">
+            <select bind:value={selectedTypeFilter} aria-label="Filter by event type">
+              <option value="all">All Event Types</option>
+              <option value="live_session">Live Sessions</option>
+              <option value="exercise_due">Exercise Due Dates</option>
+              <option value="certificate_deadline">Course Deadlines</option>
+            </select>
           </div>
 
-          <div class="month-grid">
-            {#each monthGridCells as cell (cell.dateKey)}
-              <div
-                class="day-cell"
-                class:outside={!cell.isCurrentMonth}
-                class:today={cell.isToday}
-                class:selected={selectedDayKey === cell.dateKey}
-                role="button"
-                tabindex="0"
-                onclick={() => (selectedDayKey = cell.dateKey)}
-                onkeydown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    selectedDayKey = cell.dateKey;
-                  }
-                }}
-              >
-                <div class="day-cell-header">
-                  <span class="day-number">{cell.dayNumber}</span>
-                  {#if cell.events.length > 0}
-                    <span class="day-count">{cell.events.length}</span>
-                  {/if}
-                </div>
+          <input
+            type="search"
+            class="search-input"
+            placeholder="Search course, lesson, or instructor..."
+            bind:value={searchQuery}
+          />
+        {/if}
 
-                <div class="day-events">
-                  {#each cell.events.slice(0, 3) as event (event.id)}
+        <div class="view-switcher" role="tablist" aria-label="Calendar view mode">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'month'}
+            class:active={viewMode === 'month'}
+            onclick={() => (viewMode = 'month')}
+          >
+            Month
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'week'}
+            class:active={viewMode === 'week'}
+            onclick={() => (viewMode = 'week')}
+          >
+            Week
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'agenda'}
+            class:active={viewMode === 'agenda'}
+            onclick={() => (viewMode = 'agenda')}
+          >
+            <ListIcon size={13} />
+            <span>Agenda</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="btn-icon"
+          onclick={loadSchedule}
+          disabled={loading}
+          title="Refresh schedule"
+          aria-label="Refresh schedule"
+        >
+          <RefreshCwIcon size={15} class={loading ? 'spin' : ''} />
+        </button>
+      </div>
+    </section>
+
+    <main class="calendar-body">
+      {#if loading}
+        <div class="empty-state">
+          <Loader2Icon size={28} class="spin accent-icon" />
+          <h3>Loading course schedule...</h3>
+          <p>Syncing live sessions and deadlines across your courses.</p>
+        </div>
+      {:else if error}
+        <div class="empty-state error">
+          <h3>Could not load schedule</h3>
+          <p>{error}</p>
+          <button type="button" class="btn-primary" onclick={loadSchedule}>Try Again</button>
+        </div>
+      {:else if viewMode === 'month'}
+        <div class="month-layout">
+          <div class="month-grid-container">
+            <div class="weekday-header">
+              {#each weekdayLabels as dayLabel (dayLabel)}
+                <div class="weekday-cell">{dayLabel}</div>
+              {/each}
+            </div>
+
+            <div class="month-grid">
+              {#each monthGridCells as cell (cell.dateKey)}
+                <div
+                  class="day-cell"
+                  class:outside={!cell.isCurrentMonth}
+                  class:today={cell.isToday}
+                  class:selected={selectedDayKey === cell.dateKey}
+                  role="button"
+                  tabindex="0"
+                  onclick={() => (selectedDayKey = cell.dateKey)}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      selectedDayKey = cell.dateKey;
+                    }
+                  }}
+                >
+                  <div class="day-cell-header">
+                    <span class="day-number">{cell.dayNumber}</span>
+                    {#if cell.events.length > 0}
+                      <span class="day-count">{cell.events.length}</span>
+                    {/if}
+                  </div>
+
+                  <div class="day-events">
+                    {#each cell.events.slice(0, 3) as event (event.id)}
+                      {@const palette = getCourseColor(event.course.id)}
+                      {@const status = getEventTimingStatus(event)}
+                      <button
+                        type="button"
+                        class="event-pill"
+                        style:background-color={palette.bg}
+                        style:color={palette.text}
+                        style:border-color={palette.border}
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          selectedEvent = event;
+                        }}
+                      >
+                        <span class="event-dot" style:background-color={status === 'live' ? '#ef4444' : palette.dot}
+                        ></span>
+                        <span class="event-time">{formatEventTime(event.startsAt)}</span>
+                        <span class="event-title">{event.title}</span>
+                      </button>
+                    {/each}
+
+                    {#if cell.events.length > 3}
+                      <button
+                        type="button"
+                        class="more-events-btn"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          selectedDayKey = cell.dateKey;
+                        }}
+                      >
+                        +{cell.events.length - 3} more
+                      </button>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          {#if selectedDayCell}
+            <aside class="day-sidebar">
+              <div class="day-sidebar-header">
+                <div>
+                  <h4>{formatFullDate(selectedDayCell.date)}</h4>
+                  <p>
+                    {selectedDayCell.events.length}
+                    {selectedDayCell.events.length === 1 ? 'item' : 'items'} on this date
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="btn-icon"
+                  onclick={() => (selectedDayKey = null)}
+                  aria-label="Close day panel"
+                >
+                  <XIcon size={15} />
+                </button>
+              </div>
+
+              {#if selectedDayCell.events.length === 0}
+                <div class="day-sidebar-empty">
+                  <CalendarIcon size={22} />
+                  <p>No items recorded on this date.</p>
+                </div>
+              {:else}
+                <div class="day-sidebar-list">
+                  {#each selectedDayCell.events as event (event.id)}
+                    {@const palette = getCourseColor(event.course.id)}
+                    {@const status = getEventTimingStatus(event)}
+                    {@const hasRelated = Boolean(event.relatedItems && event.relatedItems.length > 0)}
+                    {@const isExpanded = expandedEventIds.has(event.id)}
+                    <div class="agenda-card compact">
+                      <div class="agenda-card-top">
+                        <span class="course-tag" style:background-color={palette.bg} style:color={palette.text}>
+                          {event.course.title}
+                        </span>
+                        <span class="status-badge {event.type === 'live_session' ? status : 'upcoming'}">
+                          {event.type === 'live_session'
+                            ? status === 'live'
+                              ? 'Live Now'
+                              : status === 'upcoming'
+                                ? 'Upcoming'
+                                : 'Completed'
+                            : getEventTypeLabel(event)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        class="agenda-title-btn"
+                        onclick={() => {
+                          if (hasRelated) {
+                            toggleEventExpanded(event.id);
+                          } else {
+                            selectedEvent = event;
+                          }
+                        }}
+                      >
+                        {event.title}
+                      </button>
+                      <div class="agenda-meta">
+                        <span>
+                          <ClockIcon size={12} />
+                          {formatEventTimeRange(event.startsAt, event.endsAt)}
+                        </span>
+                        {#if event.instructor}
+                          <span>
+                            <UserIcon size={12} />
+                            {event.instructor.name}
+                          </span>
+                        {/if}
+                      </div>
+                      {#if hasRelated && event.relatedItems}
+                        <div class="related-dropdown" class:open={isExpanded}>
+                          <button
+                            type="button"
+                            class="related-dropdown-trigger"
+                            aria-expanded={isExpanded}
+                            onclick={() => toggleEventExpanded(event.id)}
+                          >
+                            <span>
+                              {isExpanded
+                                ? `Hide ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`
+                                : `Show ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`}
+                            </span>
+                            <span class="trigger-chevron" class:rotated={isExpanded}>
+                              <ChevronDownIcon size={14} />
+                            </span>
+                          </button>
+                          {#if isExpanded}
+                            <ul class="related-items-list">
+                              {#each event.relatedItems as item (item.kind + ':' + item.id)}
+                                <li class="related-item-row">
+                                  <span class="related-kind-pill {item.kind}">{item.kind}</span>
+                                  <span class="related-item-title">{item.title}</span>
+                                </li>
+                              {/each}
+                            </ul>
+                          {/if}
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </aside>
+          {/if}
+        </div>
+      {:else if viewMode === 'week'}
+        <div class="week-grid">
+          {#each weekDayCells as day (day.dateKey)}
+            <div class="week-column" class:today={day.isToday}>
+              <div class="week-column-header">
+                <span class="week-day-name">
+                  {day.date.toLocaleDateString([], { weekday: 'short' })}
+                </span>
+                <span class="week-day-num" class:today={day.isToday}>{day.dayNumber}</span>
+              </div>
+
+              <div class="week-column-body">
+                {#if day.events.length === 0}
+                  <div class="week-empty">No scheduled events</div>
+                {:else}
+                  {#each day.events as event (event.id)}
                     {@const palette = getCourseColor(event.course.id)}
                     {@const status = getEventTimingStatus(event)}
                     <button
                       type="button"
-                      class="event-pill"
-                      style:background-color={palette.bg}
-                      style:color={palette.text}
-                      style:border-color={palette.border}
-                      onclick={(e) => {
-                        e.stopPropagation();
-                        selectedEvent = event;
-                      }}
+                      class="week-event-card"
+                      style:border-left-color={palette.dot}
+                      onclick={() => (selectedEvent = event)}
                     >
-                      <span
-                        class="event-dot"
-                        style:background-color={status === 'live' ? '#ef4444' : palette.dot}
-                      ></span>
-                      <span class="event-time">{formatEventTime(event.startsAt)}</span>
-                      <span class="event-title">{event.title}</span>
-                    </button>
-                  {/each}
-
-                  {#if cell.events.length > 3}
-                    <button
-                      type="button"
-                      class="more-events-btn"
-                      onclick={(e) => {
-                        e.stopPropagation();
-                        selectedDayKey = cell.dateKey;
-                      }}
-                    >
-                      +{cell.events.length - 3} more
-                    </button>
-                  {/if}
-                </div>
-              </div>
-            {/each}
-          </div>
-        </div>
-
-        {#if selectedDayCell}
-          <aside class="day-sidebar">
-            <div class="day-sidebar-header">
-              <div>
-                <h4>{formatFullDate(selectedDayCell.date)}</h4>
-                <p>
-                  {selectedDayCell.events.length}
-                  {selectedDayCell.events.length === 1 ? 'item' : 'items'} on this date
-                </p>
-              </div>
-              <button
-                type="button"
-                class="btn-icon"
-                onclick={() => (selectedDayKey = null)}
-                aria-label="Close day panel"
-              >
-                <XIcon size={15} />
-              </button>
-            </div>
-
-            {#if selectedDayCell.events.length === 0}
-              <div class="day-sidebar-empty">
-                <CalendarIcon size={22} />
-                <p>No items recorded on this date.</p>
-              </div>
-            {:else}
-              <div class="day-sidebar-list">
-                {#each selectedDayCell.events as event (event.id)}
-                  {@const palette = getCourseColor(event.course.id)}
-                  {@const status = getEventTimingStatus(event)}
-                  {@const hasRelated = Boolean(event.relatedItems && event.relatedItems.length > 0)}
-                  {@const isExpanded = expandedEventIds.has(event.id)}
-                  <div class="agenda-card compact">
-                    <div class="agenda-card-top">
-                      <span
-                        class="course-tag"
-                        style:background-color={palette.bg}
-                        style:color={palette.text}
-                      >
-                        {event.course.title}
-                      </span>
-                      <span class="status-badge {event.type === 'live_session' ? status : 'upcoming'}">
-                        {event.type === 'live_session'
-                          ? status === 'live'
-                            ? 'Live Now'
-                            : status === 'upcoming'
-                              ? 'Upcoming'
-                              : 'Completed'
-                          : getEventTypeLabel(event)}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      class="agenda-title-btn"
-                      onclick={() => {
-                        if (hasRelated) {
-                          toggleEventExpanded(event.id);
-                        } else {
-                          selectedEvent = event;
-                        }
-                      }}
-                    >
-                      {event.title}
-                    </button>
-                    <div class="agenda-meta">
-                      <span>
-                        <ClockIcon size={12} />
-                        {formatEventTimeRange(event.startsAt, event.endsAt)}
-                      </span>
-                      {#if event.instructor}
-                        <span>
-                          <UserIcon size={12} />
-                          {event.instructor.name}
-                        </span>
-                      {/if}
-                    </div>
-                    {#if hasRelated && event.relatedItems}
-                      <div class="related-dropdown" class:open={isExpanded}>
-                        <button
-                          type="button"
-                          class="related-dropdown-trigger"
-                          aria-expanded={isExpanded}
-                          onclick={() => toggleEventExpanded(event.id)}
-                        >
-                          <span>
-                            {isExpanded
-                              ? `Hide ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`
-                              : `Show ${event.relatedItems.length} lesson${event.relatedItems.length === 1 ? '' : 's'} & exercise${event.relatedItems.length === 1 ? '' : 's'} created`}
-                          </span>
-                          <span class="trigger-chevron" class:rotated={isExpanded}>
-                            <ChevronDownIcon size={14} />
-                          </span>
-                        </button>
-                        {#if isExpanded}
-                          <ul class="related-items-list">
-                            {#each event.relatedItems as item (item.kind + ':' + item.id)}
-                              <li class="related-item-row">
-                                <span class="related-kind-pill {item.kind}">{item.kind}</span>
-                                <span class="related-item-title">{item.title}</span>
-                              </li>
-                            {/each}
-                          </ul>
+                      <div class="week-event-time">
+                        <span>{formatEventTime(event.startsAt)}</span>
+                        {#if status === 'live'}
+                          <span class="live-indicator">LIVE</span>
                         {/if}
                       </div>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
-            {/if}
-          </aside>
-        {/if}
-      </div>
-    {:else if viewMode === 'week'}
-      <div class="week-grid">
-        {#each weekDayCells as day (day.dateKey)}
-          <div class="week-column" class:today={day.isToday}>
-            <div class="week-column-header">
-              <span class="week-day-name">
-                {day.date.toLocaleDateString([], { weekday: 'short' })}
-              </span>
-              <span class="week-day-num" class:today={day.isToday}>{day.dayNumber}</span>
-            </div>
-
-            <div class="week-column-body">
-              {#if day.events.length === 0}
-                <div class="week-empty">No scheduled events</div>
-              {:else}
-                {#each day.events as event (event.id)}
-                  {@const palette = getCourseColor(event.course.id)}
-                  {@const status = getEventTimingStatus(event)}
-                  <button
-                    type="button"
-                    class="week-event-card"
-                    style:border-left-color={palette.dot}
-                    onclick={() => (selectedEvent = event)}
-                  >
-                    <div class="week-event-time">
-                      <span>{formatEventTime(event.startsAt)}</span>
-                      {#if status === 'live'}
-                        <span class="live-indicator">LIVE</span>
-                      {/if}
-                    </div>
-                    <div class="week-event-title">{event.title}</div>
-                    <div class="week-event-course" style:color={palette.text}>
-                      {event.course.title}
-                    </div>
-                    {#if event.instructor}
-                      <div class="week-event-instructor">
-                        <UserIcon size={11} />
-                        <span>{event.instructor.name}</span>
+                      <div class="week-event-title">{event.title}</div>
+                      <div class="week-event-course" style:color={palette.text}>
+                        {event.course.title}
                       </div>
-                    {/if}
-                  </button>
-                {/each}
-              {/if}
+                      {#if event.instructor}
+                        <div class="week-event-instructor">
+                          <UserIcon size={11} />
+                          <span>{event.instructor.name}</span>
+                        </div>
+                      {/if}
+                    </button>
+                  {/each}
+                {/if}
+              </div>
             </div>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      {#if agendaGroups.length === 0}
+          {/each}
+        </div>
+      {:else if agendaGroups.length === 0}
         <div class="empty-state">
           <CalendarIcon size={32} class="accent-icon" />
           <h3>No scheduled events found</h3>
-          <p>
-            Live classes, exercise due dates, and course deadlines will appear here.
-          </p>
+          <p>Live classes, exercise due dates, and course deadlines will appear here.</p>
         </div>
       {:else}
         <div class="agenda-list">
@@ -1004,7 +1006,8 @@
               <div class="agenda-date-header">
                 <span class="agenda-date-title">{formatFullDate(group.date)}</span>
                 <span class="agenda-date-count">
-                  {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
+                  {group.items.length}
+                  {group.items.length === 1 ? 'item' : 'items'}
                 </span>
               </div>
 
@@ -1024,11 +1027,7 @@
 
                     <div class="agenda-content-col">
                       <div class="agenda-badges">
-                        <span
-                          class="course-tag"
-                          style:background-color={palette.bg}
-                          style:color={palette.text}
-                        >
+                        <span class="course-tag" style:background-color={palette.bg} style:color={palette.text}>
                           {event.course.title}
                         </span>
                         <span class="status-badge {event.type === 'live_session' ? status : 'upcoming'}">
@@ -1042,11 +1041,7 @@
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        class="agenda-title-btn"
-                        onclick={() => (selectedEvent = event)}
-                      >
+                      <button type="button" class="agenda-title-btn" onclick={() => (selectedEvent = event)}>
                         {event.title}
                       </button>
 
@@ -1102,12 +1097,7 @@
 
                     <div class="agenda-actions-col">
                       {#if event.lesson?.callUrl && status !== 'completed'}
-                        <a
-                          href={event.lesson.callUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="btn-primary sm"
-                        >
+                        <a href={event.lesson.callUrl} target="_blank" rel="noopener noreferrer" class="btn-primary sm">
                           <VideoIcon size={14} />
                           <span>Join Live</span>
                         </a>
@@ -1122,11 +1112,7 @@
                           <span>Recording</span>
                         </a>
                       {/if}
-                      <button
-                        type="button"
-                        class="btn-outline sm"
-                        onclick={() => (selectedEvent = event)}
-                      >
+                      <button type="button" class="btn-outline sm" onclick={() => (selectedEvent = event)}>
                         Details
                       </button>
                     </div>
@@ -1137,143 +1123,115 @@
           {/each}
         </div>
       {/if}
-    {/if}
-  </main>
+    </main>
 
-  {#if selectedEvent}
-    {@const palette = getCourseColor(selectedEvent.course.id)}
-    {@const status = getEventTimingStatus(selectedEvent)}
-    <div
-      class="modal-backdrop"
-      role="presentation"
-      onclick={() => (selectedEvent = null)}
-    >
-      <div
-        class="modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="event-dialog-title"
-        tabindex="-1"
-        onclick={(e) => e.stopPropagation()}
-        onkeydown={(e) => {
-          if (e.key === 'Escape') selectedEvent = null;
-        }}
-      >
-        <div class="modal-header">
-          <div class="modal-badges">
-            <span
-              class="course-tag"
-              style:background-color={palette.bg}
-              style:color={palette.text}
-            >
-              {selectedEvent.course.title}
-            </span>
-            <span class="status-badge {selectedEvent.type === 'live_session' ? status : 'upcoming'}">
-              {selectedEvent.type === 'live_session'
-                ? status === 'live'
-                  ? 'Live Now'
-                  : status === 'upcoming'
-                    ? formatRelativeTime(selectedEvent.startsAt)
-                    : 'Completed'
-                : getEventTypeLabel(selectedEvent)}
-            </span>
+    {#if selectedEvent}
+      {@const palette = getCourseColor(selectedEvent.course.id)}
+      {@const status = getEventTimingStatus(selectedEvent)}
+      <div class="modal-backdrop" role="presentation" onclick={() => (selectedEvent = null)}>
+        <div
+          class="modal-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="event-dialog-title"
+          tabindex="-1"
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => {
+            if (e.key === 'Escape') selectedEvent = null;
+          }}
+        >
+          <div class="modal-header">
+            <div class="modal-badges">
+              <span class="course-tag" style:background-color={palette.bg} style:color={palette.text}>
+                {selectedEvent.course.title}
+              </span>
+              <span class="status-badge {selectedEvent.type === 'live_session' ? status : 'upcoming'}">
+                {selectedEvent.type === 'live_session'
+                  ? status === 'live'
+                    ? 'Live Now'
+                    : status === 'upcoming'
+                      ? formatRelativeTime(selectedEvent.startsAt)
+                      : 'Completed'
+                  : getEventTypeLabel(selectedEvent)}
+              </span>
+            </div>
+            <button type="button" class="btn-icon" onclick={() => (selectedEvent = null)} aria-label="Close details">
+              <XIcon size={16} />
+            </button>
           </div>
-          <button
-            type="button"
-            class="btn-icon"
-            onclick={() => (selectedEvent = null)}
-            aria-label="Close details"
-          >
-            <XIcon size={16} />
-          </button>
-        </div>
 
-        <h3 id="event-dialog-title" class="modal-title">{selectedEvent.title}</h3>
+          <h3 id="event-dialog-title" class="modal-title">{selectedEvent.title}</h3>
 
-        <div class="modal-details-grid">
-          <div class="detail-item">
-            <span class="detail-label">Date</span>
-            <span class="detail-value">{formatFullDate(selectedEvent.startsAt)}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Time ({localTimezone})</span>
-            <span class="detail-value">
-              {formatEventTimeRange(selectedEvent.startsAt, selectedEvent.endsAt)}
-              {#if selectedEvent.durationMinutes > 0}
-                ({selectedEvent.durationMinutes} mins)
-              {/if}
-            </span>
-          </div>
-          {#if selectedEvent.instructor}
+          <div class="modal-details-grid">
             <div class="detail-item">
-              <span class="detail-label">Instructor</span>
-              <span class="detail-value">{selectedEvent.instructor.name}</span>
+              <span class="detail-label">Date</span>
+              <span class="detail-value">{formatFullDate(selectedEvent.startsAt)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Time ({localTimezone})</span>
+              <span class="detail-value">
+                {formatEventTimeRange(selectedEvent.startsAt, selectedEvent.endsAt)}
+                {#if selectedEvent.durationMinutes > 0}
+                  ({selectedEvent.durationMinutes} mins)
+                {/if}
+              </span>
+            </div>
+            {#if selectedEvent.instructor}
+              <div class="detail-item">
+                <span class="detail-label">Instructor</span>
+                <span class="detail-value">{selectedEvent.instructor.name}</span>
+              </div>
+            {/if}
+            {#if selectedEvent.timezone}
+              <div class="detail-item">
+                <span class="detail-label">Course Timezone</span>
+                <span class="detail-value">{selectedEvent.timezone}</span>
+              </div>
+            {/if}
+          </div>
+
+          {#if selectedEvent.relatedItems && selectedEvent.relatedItems.length > 0}
+            <div class="modal-related-section">
+              <span class="detail-label">
+                Lessons & Exercises Created ({selectedEvent.relatedItems.length})
+              </span>
+              <ul class="related-items-list modal">
+                {#each selectedEvent.relatedItems as item (item.kind + ':' + item.id)}
+                  <li class="related-item-row">
+                    <span class="related-kind-pill {item.kind}">{item.kind}</span>
+                    <span class="related-item-title">{item.title}</span>
+                  </li>
+                {/each}
+              </ul>
             </div>
           {/if}
-          {#if selectedEvent.timezone}
-            <div class="detail-item">
-              <span class="detail-label">Course Timezone</span>
-              <span class="detail-value">{selectedEvent.timezone}</span>
-            </div>
-          {/if}
-        </div>
 
-        {#if selectedEvent.relatedItems && selectedEvent.relatedItems.length > 0}
-          <div class="modal-related-section">
-            <span class="detail-label">
-              Lessons & Exercises Created ({selectedEvent.relatedItems.length})
-            </span>
-            <ul class="related-items-list modal">
-              {#each selectedEvent.relatedItems as item (item.kind + ':' + item.id)}
-                <li class="related-item-row">
-                  <span class="related-kind-pill {item.kind}">{item.kind}</span>
-                  <span class="related-item-title">{item.title}</span>
-                </li>
-              {/each}
-            </ul>
+          <div class="modal-footer">
+            {#if selectedEvent.lesson?.callUrl}
+              <a href={selectedEvent.lesson.callUrl} target="_blank" rel="noopener noreferrer" class="btn-primary">
+                <VideoIcon size={15} />
+                <span>Join Live Session</span>
+                <ExternalLinkIcon size={13} />
+              </a>
+            {/if}
+
+            {#if selectedEvent.lesson?.recordingUrl}
+              <a href={selectedEvent.lesson.recordingUrl} target="_blank" rel="noopener noreferrer" class="btn-outline">
+                <VideoIcon size={15} />
+                <span>Watch Recording</span>
+                <ExternalLinkIcon size={13} />
+              </a>
+            {/if}
+
+            <button type="button" class="btn-outline" onclick={() => selectedEvent && openCourseInHost(selectedEvent)}>
+              <span>Open Course</span>
+              <ExternalLinkIcon size={13} />
+            </button>
           </div>
-        {/if}
-
-        <div class="modal-footer">
-          {#if selectedEvent.lesson?.callUrl}
-            <a
-              href={selectedEvent.lesson.callUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn-primary"
-            >
-              <VideoIcon size={15} />
-              <span>Join Live Session</span>
-              <ExternalLinkIcon size={13} />
-            </a>
-          {/if}
-
-          {#if selectedEvent.lesson?.recordingUrl}
-            <a
-              href={selectedEvent.lesson.recordingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn-outline"
-            >
-              <VideoIcon size={15} />
-              <span>Watch Recording</span>
-              <ExternalLinkIcon size={13} />
-            </a>
-          {/if}
-
-          <button
-            type="button"
-            class="btn-outline"
-            onclick={() => selectedEvent && openCourseInHost(selectedEvent)}
-          >
-            <span>Open Course</span>
-            <ExternalLinkIcon size={13} />
-          </button>
         </div>
       </div>
-    </div>
-  {/if}
-</div>
+    {/if}
+  </div>
 {/if}
 
 <style>
@@ -2235,7 +2193,9 @@
     background: var(--cio-surface, #ffffff);
     text-align: left;
     cursor: pointer;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
   }
 
   .week-event-card:hover {
@@ -2563,7 +2523,9 @@
     border-radius: 0.5rem;
     background: var(--cio-surface, #ffffff);
     overflow: hidden;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   .related-dropdown:hover,

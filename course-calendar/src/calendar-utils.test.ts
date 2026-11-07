@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  CalendarEvent,
-  PluginCourseRecord,
-  PluginExerciseRecord,
-  PluginLessonRecord
-} from './types';
+import type { CalendarEvent, PluginCourseRecord, PluginExerciseRecord, PluginLessonRecord } from './types';
 import {
   buildCalendarEvents,
   buildMonthGrid,
@@ -80,18 +75,11 @@ describe('calendar-utils', () => {
         id: 'course-1',
         title: 'Distributed Systems 101',
         slug: 'distributed-systems-101',
-        description: null,
-        imageUrl: null,
         type: 'LIVE_CLASS',
-        status: 'ACTIVE',
-        visibility: 'public',
-        published: true,
-        publishedAt: null,
         sessionTimezone: 'Africa/Lagos',
         certificateDeadline: '2026-10-30T23:59:00.000Z',
         instructor: { name: 'Grace Hopper', avatarUrl: null },
-        createdAt: '2026-10-01T10:00:00.000Z',
-        updatedAt: '2026-10-01T10:00:00.000Z'
+        createdAt: '2026-10-01T10:00:00.000Z'
       }
     ];
 
@@ -100,31 +88,23 @@ describe('calendar-utils', () => {
         id: 'lesson-1',
         courseId: 'course-1',
         title: 'Consensus Protocols Live',
-        slug: 'consensus-protocols-live',
-        order: 1,
-        isUnlocked: true,
         lessonAt: '2026-10-20T14:00:00.000Z',
         callUrl: 'https://meet.google.com/abc',
         recordingUrl: null,
         sessionDurationMinutes: 90,
         instructor: null,
-        createdAt: '2026-10-01T10:05:00.000Z',
-        updatedAt: '2026-10-01T10:05:00.000Z'
+        createdAt: '2026-10-01T10:05:00.000Z'
       },
       {
         id: 'lesson-2',
         courseId: 'course-1',
         title: 'Raft Deep Dive',
-        slug: 'raft-deep-dive',
-        order: 2,
-        isUnlocked: true,
         lessonAt: null,
         callUrl: null,
         recordingUrl: null,
         sessionDurationMinutes: null,
         instructor: null,
-        createdAt: '2026-10-05T11:00:00.000Z',
-        updatedAt: '2026-10-05T11:00:00.000Z'
+        createdAt: '2026-10-05T11:00:00.000Z'
       }
     ];
 
@@ -132,45 +112,29 @@ describe('calendar-utils', () => {
       {
         id: 'ex-1',
         courseId: 'course-1',
-        lessonId: null,
         title: 'Quiz 1',
-        description: null,
-        order: 1,
         dueBy: '2026-10-25T17:00:00.000Z',
-        createdAt: '2026-10-01T10:10:00.000Z',
-        updatedAt: '2026-10-01T10:10:00.000Z'
+        createdAt: '2026-10-01T10:10:00.000Z'
       }
     ];
 
     const derived = buildCalendarEvents(courses, lessons, exercises);
-    expect(derived.map((event) => event.type)).toEqual([
-      'live_session',
-      'exercise_due',
-      'certificate_deadline'
-    ]);
+    expect(derived.map((event) => event.type)).toEqual(['live_session', 'exercise_due', 'certificate_deadline']);
     expect(derived.some((event) => event.startsAt === courses[0].createdAt)).toBe(false);
     expect(derived.some((event) => event.startsAt === lessons[1].createdAt)).toBe(false);
   });
 
-  it('does not turn creation or completion timestamps into calendar events', () => {
+  it('does not turn creation timestamps into calendar events', () => {
     const courses: PluginCourseRecord[] = [
       {
         id: 'course-1',
         title: 'Python 101',
         slug: 'python-101',
-        description: null,
-        imageUrl: null,
         type: 'SELF_PACED',
-        status: 'ACTIVE',
-        visibility: 'public',
-        published: true,
-        publishedAt: null,
         sessionTimezone: null,
         certificateDeadline: null,
-        completedAt: '2026-10-12T16:00:00.000Z',
         instructor: null,
-        createdAt: '2026-10-01T10:00:00.000Z',
-        updatedAt: '2026-10-01T10:00:00.000Z'
+        createdAt: '2026-10-01T10:00:00.000Z'
       }
     ];
 
@@ -179,17 +143,12 @@ describe('calendar-utils', () => {
         id: 'lesson-1',
         courseId: 'course-1',
         title: 'Variables & Types',
-        slug: 'variables-and-types',
-        order: 1,
-        isUnlocked: true,
         lessonAt: null,
         callUrl: null,
         recordingUrl: null,
         sessionDurationMinutes: null,
-        completedAt: '2026-10-10T12:00:00.000Z',
         instructor: null,
-        createdAt: '2026-10-01T10:00:00.000Z',
-        updatedAt: '2026-10-01T10:00:00.000Z'
+        createdAt: '2026-10-01T10:00:00.000Z'
       }
     ];
 
@@ -197,13 +156,9 @@ describe('calendar-utils', () => {
       {
         id: 'ex-1',
         courseId: 'course-1',
-        lessonId: null,
         title: 'Python Basics Exercise',
-        description: null,
-        order: 1,
-        completedAt: '2026-10-11T15:30:00.000Z',
-        createdAt: '2026-10-01T10:00:00.000Z',
-        updatedAt: '2026-10-01T10:00:00.000Z'
+        dueBy: null,
+        createdAt: '2026-10-01T10:00:00.000Z'
       }
     ];
 

@@ -5,67 +5,25 @@ export interface CalendarCourseRef {
   type: string | null;
 }
 
-export interface PluginCourseRecord {
-  id: string;
-  title: string;
-  slug: string | null;
-  description: string | null;
-  imageUrl: string | null;
-  type: string | null;
-  status: string;
-  visibility: 'public' | 'private';
-  published: boolean;
-  publishedAt: string | null;
-  sessionTimezone: string | null;
-  certificateDeadline: string | null;
-  completedAt?: string | null;
-  instructor: {
-    name: string;
-    avatarUrl: string | null;
-  } | null;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { PluginCourseMetadata, PluginExerciseMetadata, PluginLessonMetadata } from '@classroomio/plugin-sdk';
 
-export interface PluginLessonRecord {
-  id: string;
-  courseId: string;
-  title: string;
-  slug: string;
-  order: number;
-  isUnlocked: boolean;
-  lessonAt: string | null;
-  callUrl: string | null;
-  recordingUrl: string | null;
-  sessionDurationMinutes: number | null;
-  completedAt?: string | null;
-  instructor: {
-    id: string;
-    name: string;
-    avatarUrl: string | null;
-  } | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PluginExerciseRecord {
-  id: string;
-  courseId: string;
-  lessonId: string | null;
-  title: string;
-  description: string | null;
-  order: number;
-  dueBy?: string | null;
-  completedAt?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PluginListResponse<TItem> {
-  role: 'admin' | 'tutor' | 'student';
-  items: TItem[];
-  nextCursor?: string | null;
-}
+export type PluginCourseRecord = Pick<
+  PluginCourseMetadata,
+  'id' | 'title' | 'slug' | 'type' | 'sessionTimezone' | 'certificateDeadline' | 'instructor' | 'createdAt'
+>;
+export type PluginLessonRecord = Pick<
+  PluginLessonMetadata,
+  | 'id'
+  | 'courseId'
+  | 'title'
+  | 'lessonAt'
+  | 'callUrl'
+  | 'recordingUrl'
+  | 'sessionDurationMinutes'
+  | 'instructor'
+  | 'createdAt'
+>;
+export type PluginExerciseRecord = Pick<PluginExerciseMetadata, 'id' | 'courseId' | 'title' | 'dueBy' | 'createdAt'>;
 
 export type CalendarEventType =
   | 'live_session'
