@@ -107,3 +107,62 @@ In the `plugin-production` environment, add the following variable:
 - **Immutability**: The upload script (`scripts/upload-release.mjs`) uploads files with `IfNoneMatch: "*"` and `CacheControl: "public, max-age=31536000, immutable"`. If an object key already exists, the upload asserts that the existing bytes match the local build. It will fail rather than silently overwrite.
 - **Rollbacks**: If a released plugin version is broken, increment its patch version in `plugin.json` (e.g. `1.0.1` -> `1.0.2`), submit a fix PR, and merge. Alternatively, mark the version revoked in the ClassroomIO database using the admin CLI.
 
+---
+
+## 5. SDK Dependency & Decoupling Architecture
+
+### Why ClassroomIO is Currently Pinned to a Specific Commit
+
+In both `.github/workflows/plugin-pr.yml` and `.github/workflows/release-plugins.yml`, the workflow clones the core repository at an exact commit hash:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    repository: classroomio/classroomio
+    ref: d0d2453b973b8045a9e470640d963f47e4f31803
+    path: core
+```
+
+This is because `@classroomio/plugin-sdk` currently resides inside the `classroomio` monorepo (`packages/plugin-sdk`), and plugins consume it via relative file links (`link:../../classroomio/packages/plugin-sdk`).
+
+The commit is pinned to:
+1. **Prevent breaking CI**: Avoid in-flight refactors or breaking changes on `classroomio:main` from randomly failing unrelated plugin PRs.
+2. **Guarantee deterministic builds**: Ensure release archives produce identical SHA-256 digests on every rebuild.
+
+**Limitation**: When changes span across both repositories (e.g. adding a new bridge capability in `classroomio` and consuming it in `plugins`), testing requires updating the hardcoded `ref` in the workflow once the core commit exists.
+
+### The Industry-Standard Solution: Publish SDK to npm
+
+The standard architecture used by major plugin ecosystems (Figma, VS Code, SvelteKit, etc.) is to **publish the SDK independently to npm or GitHub Packages**.
+
+Because `packages/plugin-sdk` is already an independent package (it has its own `dist`, type declarations, CLI binary `cio-plugin`, and zero internal `@cio/*` runtime dependencies), migrating to this model is straightforward:
+
+1. **Publishing**: Whenever `packages/plugin-sdk` changes in `classroomio`, automated CI releases the package to npm (e.g. `@classroomio/plugin-sdk@1.0.0`) using Semantic Versioning.
+2. **Normal dependencies**: Plugins simply declare `"@classroomio/plugin-sdk": "^1.0.0"` in `package.json`.
+3. **Decoupled CI**: The `plugins` repository **never has to checkout `classroomio` in CI**. Running `pnpm install` fetches the published package directly.
+4. **Cross-PR canary releases**: For cross-repo feature branches, a CI action in `classroomio` can publish a preview tag (e.g. `@classroomio/plugin-sdk@0.0.0-pr.123`) that the plugin PR references during review.
+5. **Community-friendly**: Third-party plugin developers do not need to clone the large core `classroomio` repository just to install dependencies and build plugins locally.
+
+### Intermediate Alternative: Dynamic Branch Matching in CI
+
+Before publishing to npm, CI can dynamically checkout a branch in `classroomio` that matches the PR's branch name, falling back to `main`:
+
+```yaml
+- name: Determine ClassroomIO branch ref
+  id: core-ref
+  run: |
+    BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
+    if git ls-remote --heads https://github.com/classroomio/classroomio.git "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+      echo "ref=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+    else
+      echo "ref=main" >> "$GITHUB_OUTPUT"
+    fi
+
+- uses: actions/checkout@v4
+  with:
+    repository: classroomio/classroomio
+    ref: ${{ steps.core-ref.outputs.ref }}
+    path: core
+```
+
+

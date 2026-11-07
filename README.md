@@ -86,7 +86,9 @@ workspace/
 
 The GitHub workflows pin a specific ClassroomIO commit. For the closest match to CI, use the
 `ref` configured for the `classroomio/classroomio` checkout in
-[the pull-request workflow](.github/workflows/plugin-pr.yml).
+[the pull-request workflow](.github/workflows/plugin-pr.yml). See
+[`.github/PRODUCTION_DEPLOYMENT.md`](.github/PRODUCTION_DEPLOYMENT.md#5-sdk-dependency--decoupling-architecture)
+for why the SDK is pinned and the migration path to an independent npm package.
 
 ### 2. Install and build
 
