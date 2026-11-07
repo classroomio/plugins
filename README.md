@@ -1,4 +1,4 @@
-# ClassroomIO Plugins
+# Plugins
 
 This repository is the source-reviewed release gate for first-party and community ClassroomIO plugins. Developers submit plugin source through a pull request. Pull-request CI builds untrusted review artifacts without production credentials. After merge to protected `main`, a protected workflow rebuilds the same source, proves deterministic digests, uploads immutable assets to R2, and registers the approved versions with ClassroomIO.
 
@@ -24,7 +24,7 @@ The ClassroomIO boundary packages are not published to npm yet. Until they are, 
 ```text
 Dev/
 ├── classroomio/
-└── classroomio-plugins/
+└── plugins/
 ```
 
 Use Node 20.19.3 and pnpm 10.19.0, then run:
@@ -45,7 +45,7 @@ pnpm release:verify
 Run the ClassroomIO API and configure `apps/api/.env`:
 
 ```bash
-PLUGIN_ARTIFACTS_PATH=/absolute/path/to/classroomio-plugins/.plugin-artifacts
+PLUGIN_ARTIFACTS_PATH=/absolute/path/to/plugins/.plugin-artifacts
 ```
 
 Create an organization API key with `plugin:development`. The profile that created it must still be an administrator of the target organization. In the plugin directory, use normal Vite commands for UI work and `seed` only for a packaged ClassroomIO installation:
