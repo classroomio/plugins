@@ -87,7 +87,9 @@
     void reportSidebarHeight();
   }
 
-  const isSidebarSurface = $derived(context?.surface?.target === 'course.sidebar');
+  const isSidebarSurface = $derived(
+    context?.surface?.target === 'course.sidebar' || context?.surface?.target === 'course.newsfeed.aside'
+  );
   const lockedCourseId = $derived(
     context?.surface?.resource?.type === 'course' ? context.surface.resource.id : undefined
   );
@@ -355,7 +357,7 @@
       const ctx = await client.context.get();
       context = ctx;
       role = ctx.actor?.role === 'learner' || ctx.actor?.role === 'public' ? 'student' : (ctx.actor?.role ?? 'student');
-      if (ctx.surface?.target === 'course.sidebar') {
+      if (ctx.surface?.target === 'course.sidebar' || ctx.surface?.target === 'course.newsfeed.aside') {
         viewMode = 'month';
         await reportSidebarHeight();
       }

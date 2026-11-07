@@ -47,7 +47,7 @@
     "slots": [
       {
         "id": "course-calendar-sidebar",
-        "target": "course.sidebar",
+        "target": "course.newsfeed.aside",
         "renderMode": "custom",
         "entrypoint": "calendar",
         "title": "Course Schedule"
