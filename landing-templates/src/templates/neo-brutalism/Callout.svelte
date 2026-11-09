@@ -26,7 +26,7 @@
           <div class="action-wrap">
             <button
               class="btn-cta"
-              onclick={(e) => handleAction(callout.action.href, e)}
+              onclick={(e) => handleAction(callout.action!.href, e)}
             >
               <span>{callout.action.label}</span>
               <ArrowRight size={16} />

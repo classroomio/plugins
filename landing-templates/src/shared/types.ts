@@ -63,7 +63,7 @@ export interface PublicLandingCallout {
   enabled?: boolean;
   heading: string;
   description: string;
-  action: PublicLandingLinkItem;
+  action?: PublicLandingLinkItem;
 }
 
 export interface PublicLandingEmbed {

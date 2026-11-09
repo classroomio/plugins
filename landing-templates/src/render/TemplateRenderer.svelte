@@ -4,6 +4,7 @@
     NormalizedLandingViewModel,
     PublicLandingCourse,
     PublicLandingLinkItem,
+    PublicLandingResourceCard,
     PublicLandingSocialLink
   } from '../shared/types';
   import type { PublicLandingPageViewModel } from '@classroomio/plugin-sdk';
@@ -63,27 +64,35 @@
       isFree: !c.isPaid
     }));
 
-    const linkCards = (vm.links?.items ?? []).map((item) => ({
-      icon: '✦',
-      title: item.label,
-      description: '',
-      href: item.href
-    }));
+    const rawCards = vm.links?.cards ?? (vm.links?.items ?? []).map((item) => ({ title: item.label, href: item.href }));
+    const linkCards: PublicLandingResourceCard[] = rawCards.map((card) => {
+      const desc: string = 'description' in card && typeof card.description === 'string' ? card.description : '';
+      const icon: string = 'icon' in card && typeof card.icon === 'string' ? card.icon : '✦';
+      return {
+        icon,
+        title: card.title,
+        description: desc,
+        href: card.href
+      };
+    });
+
     const callout = vm.callout
       ? {
           enabled: true,
           heading: vm.callout.title ?? '',
           description: vm.callout.description ?? '',
-          action: vm.callout.action ?? { label: messages.getStarted, href: '/courses' }
+          action: vm.callout.action
         }
       : undefined;
 
     const embed = vm.embed
       ? {
-        enabled: true,
-          title: messages.featuredMedia,
+          enabled: true,
+          title: vm.embed.title ?? messages.featuredMedia,
+          description: vm.embed.description,
           url: vm.embed.url,
-          aspectRatio: vm.embed.aspectRatio
+          aspectRatio: vm.embed.aspectRatio,
+          secondaryAction: vm.embed.secondaryAction
         }
       : undefined;
 
@@ -94,8 +103,14 @@
     }));
 
     const footer = {
+      tagline: vm.footer?.tagline,
+      copyright: vm.footer?.copyright,
       socials: footerSocials,
-      columns: [],
+      columns: (vm.footer?.columns ?? []).map((column, index) => ({
+        id: `${index}`,
+        heading: column.heading,
+        links: column.links
+      })),
       bottomText: vm.footer?.text,
       bottomLinks: footerLinks
     };
@@ -135,7 +150,9 @@
       hasMoreCourses: vm.hasMoreCourses,
       callout,
       embed,
-      links: vm.links ? { enabled: true, heading: vm.links.title ?? messages.resources, cards: linkCards } : undefined,
+      links: vm.links
+        ? { enabled: true, heading: vm.links.title ?? messages.resources, description: vm.links.description, cards: linkCards }
+        : undefined,
       footer,
       labels,
       actions

@@ -28,7 +28,7 @@
           <button
             type="button"
             class="btn-cta"
-            onclick={(e) => handleAction(callout.action.href, e)}
+            onclick={(e) => handleAction(callout.action!.href, e)}
           >
             <Sparkles size={16} />
             <span>{callout.action.label}</span>
