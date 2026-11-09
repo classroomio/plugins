@@ -2,6 +2,7 @@
   import type { NormalizedLandingViewModel, PublicLandingFooter } from '../../shared/types';
   import { requestNavigation } from '../../shared/bridge';
   import { getMessages } from '../../shared/i18n';
+  import SocialIcon from '../../shared/SocialIcon.svelte';
 
   let {
     organization,
@@ -36,6 +37,7 @@
           {/if}
           <span class="org-name">{organization.name}</span>
         </div>
+
         {#if footer.tagline}
           <p class="tagline">{footer.tagline}</p>
         {/if}
@@ -45,10 +47,11 @@
             {#each footer.socials as social}
               <a
                 href={social.href}
-                class="social-link"
+                class="social-icon-btn"
+                aria-label={social.platform}
                 onclick={(e) => handleLink(social.href, e)}
               >
-                <span>{social.platform}</span>
+                <SocialIcon platform={social.platform} size={15} />
               </a>
             {/each}
           </div>
@@ -106,26 +109,27 @@
 
 <style>
   .atelier-footer {
-    border-top: 1px solid rgba(214, 211, 209, 0.8);
-    background: #f5f3ec;
+    border-top: 1px solid rgba(17, 17, 20, 0.08);
+    background: #ffffff;
     padding: 5rem 2rem 3rem;
   }
 
   .footer-container {
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
   }
 
   .top-row {
     display: flex;
     justify-content: space-between;
-    gap: 3.5rem;
+    gap: 4rem;
+    padding-bottom: 3.5rem;
+    border-bottom: 1px solid rgba(17, 17, 20, 0.06);
     flex-wrap: wrap;
-    margin-bottom: 4rem;
   }
 
   .brand-col {
-    max-width: 360px;
+    max-width: 380px;
   }
 
   .brand {
@@ -139,110 +143,134 @@
     height: 2rem;
     width: auto;
     object-fit: contain;
+    border-radius: 4px;
   }
 
   .org-name {
-    font-family: 'Newsreader', Georgia, serif;
+    font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
     font-size: 1.35rem;
     font-weight: 500;
-    color: #1c1917;
+    letter-spacing: -0.02em;
+    color: #111114;
   }
 
   .tagline {
     margin: 0 0 1.5rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 0.9375rem;
     line-height: 1.6;
-    color: #78716c;
+    color: #71717a;
   }
 
   .socials-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    align-items: center;
+    gap: 0.625rem;
   }
 
-  .social-link {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #78716c;
+  .social-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background: #f4f4f5;
+    color: #52525b;
     text-decoration: none;
-    transition: color 0.15s ease;
+    transition: all 0.2s ease;
   }
 
-  .social-link:hover {
-    color: #c2410c;
+  .social-icon-btn:hover {
+    background: #111114;
+    color: #ffffff;
+    transform: translateY(-1px);
   }
 
   .columns-wrap {
     display: flex;
-    gap: 3.5rem;
+    gap: 4rem;
     flex-wrap: wrap;
   }
 
-  .column {
-    min-width: 130px;
-  }
-
   .col-title {
-    margin: 0 0 1rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 700;
+    margin: 0 0 1.25rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #1c1917;
+    letter-spacing: 0.08em;
+    color: #111114;
   }
 
   .col-list {
     list-style: none;
-    padding: 0;
     margin: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
+    gap: 0.75rem;
   }
 
   .col-link {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.875rem;
-    color: #78716c;
+    color: #71717a;
     text-decoration: none;
+    font-size: 0.875rem;
     transition: color 0.15s ease;
   }
 
   .col-link:hover {
-    color: #1c1917;
+    color: #111114;
   }
 
   .bottom-bar {
-    border-top: 1px solid rgba(214, 211, 209, 0.7);
-    padding-top: 1.5rem;
+    padding-top: 2.25rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1.5rem;
     flex-wrap: wrap;
-    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 0.8125rem;
-    color: #78716c;
+    color: #a1a1aa;
+  }
+
+  .copyright {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .bottom-text {
+    color: #71717a;
   }
 
   .bottom-links {
     display: flex;
+    align-items: center;
     gap: 1.5rem;
   }
 
   .bottom-link {
-    color: #78716c;
+    color: #71717a;
     text-decoration: none;
     transition: color 0.15s ease;
   }
 
   .bottom-link:hover {
-    color: #1c1917;
+    color: #111114;
+  }
+
+  @media (max-width: 768px) {
+    .atelier-footer {
+      padding: 3.5rem 1.25rem 2.5rem;
+    }
+
+    .top-row {
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    .columns-wrap {
+      gap: 2.5rem;
+    }
   }
 </style>

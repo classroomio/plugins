@@ -41,20 +41,20 @@
         "templates": [
           {
             "id": "neo-brutalism",
-            "name": "Neo-Brutalism",
-            "description": "High-contrast borders, bold offset shadows, and playful sticker badges.",
+            "name": "Vanguard SaaS",
+            "description": "High-impact SaaS academy with vibrant surfaces, browser-framed media, and bento cards.",
             "thumbnail": "assets/neo-brutalism-thumb.svg"
           },
           {
             "id": "midnight-aurora",
-            "name": "Midnight Aurora",
-            "description": "Obsidian glassmorphism with glowing ambient aurora mesh gradients.",
+            "name": "Obsidian Horizon",
+            "description": "Deep obsidian dark luxury with ambient radial glow, frosted glass cards, and luminous accents.",
             "thumbnail": "assets/midnight-aurora-thumb.svg"
           },
           {
             "id": "atelier",
-            "name": "Atelier Editorial",
-            "description": "Sophisticated serif typography, book-jacket cards, and literary layouts.",
+            "name": "Atelier Minimal",
+            "description": "Nordic architectural aesthetic with editorial serif typography and book-jacket cards.",
             "thumbnail": "assets/atelier-thumb.svg"
           }
         ]

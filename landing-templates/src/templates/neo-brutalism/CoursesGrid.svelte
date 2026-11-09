@@ -22,13 +22,11 @@
   }
 </script>
 
-<section class="neo-courses">
+<section class="vanguard-courses">
   <div class="courses-container">
     <div class="header-row">
-      <div>
-        <div class="section-tag">
-          <span>Catalog</span>
-        </div>
+      <div class="title-col">
+        <div class="section-badge">Curriculum</div>
         <h2 class="section-heading">{labels.coursesHeading || 'Featured Courses'}</h2>
         {#if labels.coursesSubheading}
           <p class="section-subheading">{labels.coursesSubheading}</p>
@@ -36,22 +34,22 @@
       </div>
 
       {#if hasMoreCourses}
-        <button class="neo-btn-all" onclick={handleViewAll}>
-          <span>{labels.coursesViewAll || 'Browse All Courses'}</span>
-          <ArrowRight size={16} strokeWidth={2.5} />
+        <button class="btn-all" onclick={handleViewAll}>
+          <span>{labels.coursesViewAll || 'Explore All Courses'}</span>
+          <ArrowRight size={14} />
         </button>
       {/if}
     </div>
 
     {#if !coursesLoaded}
       <div class="loading-state">
-        <div class="loader-box">Loading courses...</div>
+        <div class="spinner"></div>
       </div>
     {:else if courses.length === 0}
       <div class="empty-state">
-        <div class="empty-card">
-          <span class="empty-icon">🎒</span>
-          <h3 class="empty-title">{labels.coursesEmptyTitle || 'No courses available yet'}</h3>
+        <div class="empty-box">
+          <span class="empty-icon">✦</span>
+          <h3 class="empty-title">{labels.coursesEmptyTitle || 'No courses published yet'}</h3>
           <p class="empty-desc">{labels.coursesEmptyDescription || 'Check back soon for upcoming courses.'}</p>
         </div>
       </div>
@@ -66,14 +64,14 @@
 </section>
 
 <style>
-  .neo-courses {
-    padding: 4rem 1.5rem;
-    border-top: 3px solid #18181b;
-    background: #fbf9f1;
+  .vanguard-courses {
+    padding: 5.5rem 2rem;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
   }
 
   .courses-container {
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
   }
 
@@ -81,117 +79,135 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 2.5rem;
+    margin-bottom: 3rem;
     gap: 1.5rem;
     flex-wrap: wrap;
   }
 
-  .section-tag {
+  .title-col {
+    max-width: 600px;
+  }
+
+  .section-badge {
     display: inline-block;
-    padding: 0.25rem 0.65rem;
-    background: #fde047;
-    border: 2px solid #18181b;
-    border-radius: 4px;
-    font-family: 'Space Grotesk', sans-serif;
     font-size: 0.75rem;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
-    box-shadow: 2px 2px 0px #18181b;
+    letter-spacing: 0.08em;
+    color: #4f46e5;
+    margin-bottom: 0.5rem;
   }
 
   .section-heading {
-    margin: 0;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    margin: 0 0 0.5rem;
+    font-size: clamp(2rem, 4vw, 2.75rem);
     font-weight: 800;
-    letter-spacing: -0.02em;
-    color: #18181b;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    color: #0f172a;
   }
 
   .section-subheading {
-    margin: 0.5rem 0 0;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1rem;
-    color: #52525b;
+    margin: 0;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: #64748b;
   }
 
-  .neo-btn-all {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.9375rem;
-    font-weight: 700;
-    padding: 0.65rem 1.25rem;
+  .btn-all {
     background: #ffffff;
-    border: 2.5px solid #18181b;
-    border-radius: 6px;
-    display: flex;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    box-shadow: 3px 3px 0px #18181b;
-    transition: all 0.12s ease;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
 
-  .neo-btn-all:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0px #18181b;
-  }
-
-  .neo-btn-all:hover {
-    background: #f4f4f5;
+  .btn-all:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+    transform: translateY(-1px);
   }
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 2rem;
   }
 
-  .loading-state,
-  .empty-state {
-    padding: 3rem 1rem;
+  .loading-state {
+    padding: 5rem 0;
     display: flex;
     justify-content: center;
   }
 
-  .loader-box {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    padding: 1rem 2rem;
-    border: 2.5px solid #18181b;
-    background: #ffffff;
-    box-shadow: 4px 4px 0px #18181b;
+  .spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid #e2e8f0;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
   }
 
-  .empty-card {
-    border: 3px solid #18181b;
-    border-radius: 12px;
-    background: #ffffff;
-    padding: 3rem 2rem;
-    box-shadow: 6px 6px 0px #18181b;
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .empty-state {
+    padding: 4rem 1rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .empty-box {
     text-align: center;
     max-width: 440px;
-    width: 100%;
+    background: #ffffff;
+    padding: 3rem 2rem;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
   }
 
   .empty-icon {
-    font-size: 3rem;
+    font-size: 2rem;
+    color: #6366f1;
     display: block;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   .empty-title {
     margin: 0 0 0.5rem;
-    font-family: 'Space Grotesk', sans-serif;
     font-size: 1.25rem;
-    font-weight: 800;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.02em;
   }
 
   .empty-desc {
     margin: 0;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.875rem;
-    color: #71717a;
+    font-size: 0.9375rem;
+    color: #64748b;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 640px) {
+    .vanguard-courses {
+      padding: 3.5rem 1.25rem;
+    }
+
+    .grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

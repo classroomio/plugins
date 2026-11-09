@@ -11,7 +11,7 @@
   let { viewModel }: { viewModel: NormalizedLandingViewModel } = $props();
 </script>
 
-<div class="neo-brutalism-theme">
+<div class="vanguard-theme">
   <Nav
     organization={viewModel.organization}
     navigation={viewModel.navigation}
@@ -49,10 +49,15 @@
 </div>
 
 <style>
-  .neo-brutalism-theme {
-    background-color: #fefdf8;
-    color: #18181b;
+  .vanguard-theme {
+    background-color: #ffffff;
+    color: #0f172a;
     min-height: 100vh;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    position: relative;
+    overflow-x: hidden;
   }
 </style>

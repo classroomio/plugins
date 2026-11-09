@@ -2,6 +2,7 @@
   import type { NormalizedLandingViewModel, PublicLandingFooter } from '../../shared/types';
   import { requestNavigation } from '../../shared/bridge';
   import { getMessages } from '../../shared/i18n';
+  import SocialIcon from '../../shared/SocialIcon.svelte';
 
   let {
     organization,
@@ -26,7 +27,7 @@
   }
 </script>
 
-<footer class="neo-footer">
+<footer class="vanguard-footer">
   <div class="footer-container">
     <div class="top-row">
       <div class="brand-col">
@@ -36,6 +37,7 @@
           {/if}
           <span class="org-name">{organization.name}</span>
         </div>
+
         {#if footer.tagline}
           <p class="tagline">{footer.tagline}</p>
         {/if}
@@ -45,10 +47,11 @@
             {#each footer.socials as social}
               <a
                 href={social.href}
-                class="social-btn"
+                class="social-icon-btn"
+                aria-label={social.platform}
                 onclick={(e) => handleLink(social.href, e)}
               >
-                <span>{social.platform}</span>
+                <SocialIcon platform={social.platform} size={15} />
               </a>
             {/each}
           </div>
@@ -105,27 +108,28 @@
 </footer>
 
 <style>
-  .neo-footer {
-    border-top: 3px solid #18181b;
-    background: #fde047;
-    padding: 4rem 1.5rem 2rem;
+  .vanguard-footer {
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    padding: 5rem 2rem 3rem;
   }
 
   .footer-container {
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
   }
 
   .top-row {
     display: flex;
     justify-content: space-between;
-    gap: 3rem;
+    gap: 4rem;
+    padding-bottom: 3.5rem;
+    border-bottom: 1px solid #f1f5f9;
     flex-wrap: wrap;
-    margin-bottom: 3.5rem;
   }
 
   .brand-col {
-    max-width: 360px;
+    max-width: 380px;
   }
 
   .brand {
@@ -136,122 +140,136 @@
   }
 
   .logo {
-    height: 2.25rem;
+    height: 2rem;
     width: auto;
     object-fit: contain;
-    border: 2px solid #18181b;
     border-radius: 4px;
-    background: #ffffff;
   }
 
   .org-name {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #18181b;
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #0f172a;
   }
 
   .tagline {
-    margin: 0 0 1.25rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    margin: 0 0 1.5rem;
     font-size: 0.9375rem;
-    line-height: 1.5;
-    color: #18181b;
-    font-weight: 500;
+    line-height: 1.6;
+    color: #64748b;
   }
 
   .socials-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.625rem;
   }
 
-  .social-btn {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 0.35rem 0.65rem;
-    background: #ffffff;
-    color: #18181b;
-    border: 2px solid #18181b;
-    border-radius: 4px;
+  .social-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: #64748b;
     text-decoration: none;
-    box-shadow: 2px 2px 0px #18181b;
-    transition: all 0.12s ease;
+    transition: all 0.2s ease;
   }
 
-  .social-btn:hover {
-    background: #18181b;
+  .social-icon-btn:hover {
+    background: #4f46e5;
     color: #ffffff;
+    transform: translateY(-1px);
   }
 
   .columns-wrap {
     display: flex;
-    gap: 3rem;
+    gap: 4rem;
     flex-wrap: wrap;
   }
 
-  .column {
-    min-width: 140px;
-  }
-
   .col-title {
-    margin: 0 0 1rem;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.9375rem;
-    font-weight: 800;
+    margin: 0 0 1.25rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #18181b;
+    letter-spacing: 0.08em;
+    color: #0f172a;
   }
 
   .col-list {
     list-style: none;
-    padding: 0;
     margin: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
+    gap: 0.75rem;
   }
 
   .col-link {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #18181b;
+    color: #64748b;
     text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.15s ease;
   }
 
   .col-link:hover {
-    text-decoration: underline;
+    color: #4f46e5;
   }
 
   .bottom-bar {
-    border-top: 2px solid #18181b;
-    padding-top: 1.5rem;
+    padding-top: 2.25rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    color: #94a3b8;
+  }
+
+  .copyright {
+    display: flex;
+    align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #18181b;
+  }
+
+  .bottom-text {
+    color: #64748b;
   }
 
   .bottom-links {
     display: flex;
-    gap: 1.25rem;
+    align-items: center;
+    gap: 1.5rem;
   }
 
   .bottom-link {
-    color: #18181b;
+    color: #64748b;
     text-decoration: none;
+    transition: color 0.15s ease;
   }
 
   .bottom-link:hover {
-    text-decoration: underline;
+    color: #4f46e5;
+  }
+
+  @media (max-width: 768px) {
+    .vanguard-footer {
+      padding: 3.5rem 1.25rem 2.5rem;
+    }
+
+    .top-row {
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    .columns-wrap {
+      gap: 2.5rem;
+    }
   }
 </style>

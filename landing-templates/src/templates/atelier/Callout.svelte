@@ -13,24 +13,26 @@
 
 {#if callout.enabled !== false}
   <section class="atelier-callout">
-    <div class="callout-inner">
-      <span class="decor-quote">“</span>
-      <h2 class="heading">{callout.heading}</h2>
-      {#if callout.description}
-        <p class="description">{callout.description}</p>
-      {/if}
+    <div class="callout-card">
+      <div class="callout-inner">
+        <h2 class="heading">{callout.heading}</h2>
 
-      {#if callout.action}
-        <div class="action-wrap">
-          <button
-            class="btn-cta"
-            onclick={(e) => handleAction(callout.action.href, e)}
-          >
-            <span>{callout.action.label}</span>
-            <ArrowRight size={16} />
-          </button>
-        </div>
-      {/if}
+        {#if callout.description}
+          <p class="description">{callout.description}</p>
+        {/if}
+
+        {#if callout.action}
+          <div class="action-wrap">
+            <button
+              class="btn-cta"
+              onclick={(e) => handleAction(callout.action.href, e)}
+            >
+              <span>{callout.action.label}</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        {/if}
+      </div>
     </div>
   </section>
 {/if}
@@ -38,43 +40,41 @@
 <style>
   .atelier-callout {
     padding: 6rem 2rem;
-    border-top: 1px solid rgba(214, 211, 209, 0.7);
-    background: #f7f5ef;
+    background: #f8f8f9;
+  }
+
+  .callout-card {
+    max-width: 980px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid rgba(17, 17, 20, 0.08);
+    border-radius: 16px;
+    padding: 4.5rem 2.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   }
 
   .callout-inner {
-    max-width: 800px;
+    max-width: 680px;
     margin: 0 auto;
     text-align: center;
-    position: relative;
-  }
-
-  .decor-quote {
-    font-family: 'Newsreader', Georgia, serif;
-    font-size: 5rem;
-    line-height: 1;
-    color: #c2410c;
-    opacity: 0.6;
-    display: block;
-    margin-bottom: -1.5rem;
   }
 
   .heading {
     margin: 0 0 1rem;
-    font-family: 'Newsreader', Georgia, serif;
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+    font-size: clamp(2.25rem, 4.5vw, 3.25rem);
     font-weight: 400;
     line-height: 1.15;
-    color: #1c1917;
+    letter-spacing: -0.03em;
+    color: #111114;
   }
 
   .description {
     margin: 0 auto 2.5rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 1.125rem;
     line-height: 1.7;
-    color: #57534e;
-    max-width: 580px;
+    color: #52525b;
+    max-width: 540px;
   }
 
   .action-wrap {
@@ -83,22 +83,35 @@
   }
 
   .btn-cta {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    padding: 0.85rem 1.75rem;
-    border-radius: 4px;
-    background: #1c1917;
-    color: #fbf9f4;
+    background: #111114;
+    color: #ffffff;
     border: none;
+    padding: 0.875rem 2rem;
+    border-radius: 9999px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   }
 
   .btn-cta:hover {
-    background: #292524;
+    background: #27272a;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(17, 17, 20, 0.15);
+  }
+
+  @media (max-width: 640px) {
+    .atelier-callout {
+      padding: 4rem 1.25rem;
+    }
+
+    .callout-card {
+      padding: 3rem 1.5rem;
+    }
   }
 </style>

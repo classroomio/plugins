@@ -2,6 +2,7 @@
   import type { NormalizedLandingViewModel, PublicLandingFooter } from '../../shared/types';
   import { requestNavigation } from '../../shared/bridge';
   import { getMessages } from '../../shared/i18n';
+  import SocialIcon from '../../shared/SocialIcon.svelte';
 
   let {
     organization,
@@ -26,7 +27,7 @@
   }
 </script>
 
-<footer class="aurora-footer">
+<footer class="obsidian-footer">
   <div class="footer-container">
     <div class="top-row">
       <div class="brand-col">
@@ -46,9 +47,11 @@
               <a
                 href={social.href}
                 class="social-link"
+                title={social.platform}
+                aria-label={social.platform}
                 onclick={(e) => handleLink(social.href, e)}
               >
-                <span>{social.platform}</span>
+                <SocialIcon platform={social.platform} size={16} />
               </a>
             {/each}
           </div>
@@ -58,14 +61,14 @@
       {#if footer.columns && footer.columns.length > 0}
         <div class="columns-wrap">
           {#each footer.columns as col}
-            <div class="column">
-              <h4 class="col-title">{col.heading}</h4>
-              <ul class="col-list">
+            <div class="col">
+              <h4 class="col-heading">{col.heading}</h4>
+              <ul class="col-links">
                 {#each col.links as link}
                   <li>
                     <a
                       href={link.href}
-                      class="col-link"
+                      class="link"
                       onclick={(e) => handleLink(link.href, e)}
                     >
                       {link.label}
@@ -79,13 +82,10 @@
       {/if}
     </div>
 
-    <div class="bottom-bar">
-      <div class="copyright">
-        <span>{footer.copyright || `© ${new Date().getFullYear()} ${organization.name}. ${messages.rightsReserved}`}</span>
-        {#if footer.bottomText}
-          <span class="bottom-text">{footer.bottomText}</span>
-        {/if}
-      </div>
+    <div class="bottom-row">
+      <p class="copyright">
+        © {new Date().getFullYear()} {organization.name}. {footer.bottomText || messages.rightsReserved}
+      </p>
 
       {#if footer.bottomLinks && footer.bottomLinks.length > 0}
         <div class="bottom-links">
@@ -105,10 +105,10 @@
 </footer>
 
 <style>
-  .aurora-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: #050608;
+  .obsidian-footer {
     padding: 4.5rem 1.5rem 2.5rem;
+    background: #06070a;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .footer-container {
@@ -125,58 +125,60 @@
   }
 
   .brand-col {
-    max-width: 360px;
+    max-width: 320px;
   }
 
   .brand {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.875rem;
   }
 
   .logo {
-    height: 2.25rem;
+    height: 1.875rem;
     width: auto;
     object-fit: contain;
-    border-radius: 6px;
+    border-radius: 4px;
   }
 
   .org-name {
-    font-size: 1.25rem;
+    font-size: 1.0625rem;
     font-weight: 700;
     color: #ffffff;
+    letter-spacing: -0.02em;
   }
 
   .tagline {
     margin: 0 0 1.25rem;
-    font-size: 0.9375rem;
-    line-height: 1.5;
-    color: #94a3b8;
+    font-size: 0.84375rem;
+    line-height: 1.55;
+    color: #64748b;
   }
 
   .socials-row {
     display: flex;
-    flex-wrap: wrap;
     gap: 0.5rem;
   }
 
   .social-link {
-    font-family: 'Geist Mono', monospace;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    padding: 0.35rem 0.65rem;
+    width: 2rem;
+    height: 2rem;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #94a3b8;
     text-decoration: none;
     transition: all 0.15s ease;
   }
 
   .social-link:hover {
-    color: #22d3ee;
-    border-color: rgba(34, 211, 238, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-color: rgba(99, 102, 241, 0.4);
   }
 
   .columns-wrap {
@@ -185,20 +187,20 @@
     flex-wrap: wrap;
   }
 
-  .column {
-    min-width: 140px;
+  .col {
+    min-width: 120px;
   }
 
-  .col-title {
+  .col-heading {
     margin: 0 0 1rem;
     font-size: 0.8125rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #ffffff;
+    color: #cbd5e1;
   }
 
-  .col-list {
+  .col-links {
     list-style: none;
     padding: 0;
     margin: 0;
@@ -207,36 +209,41 @@
     gap: 0.625rem;
   }
 
-  .col-link {
-    font-size: 0.875rem;
+  .link {
+    font-size: 0.84375rem;
     color: #64748b;
     text-decoration: none;
     transition: color 0.15s ease;
   }
 
-  .col-link:hover {
-    color: #f8fafc;
+  .link:hover {
+    color: #ffffff;
   }
 
-  .bottom-bar {
+  .bottom-row {
+    padding-top: 2rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
-    padding-top: 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
     flex-wrap: wrap;
+  }
+
+  .copyright {
+    margin: 0;
     font-size: 0.8125rem;
-    color: #64748b;
+    color: #475569;
   }
 
   .bottom-links {
     display: flex;
-    gap: 1.25rem;
+    gap: 1.5rem;
   }
 
   .bottom-link {
-    color: #64748b;
+    font-size: 0.8125rem;
+    color: #475569;
     text-decoration: none;
     transition: color 0.15s ease;
   }

@@ -3,31 +3,30 @@ import type { TemplateDefinition } from './types';
 export const TEMPLATES: TemplateDefinition[] = [
   {
     id: 'neo-brutalism',
-    name: 'Neo-Brutalism',
-    tagline: 'Pop Creator / Indie Dev Academy',
-    description: 'Chunky 3px high-contrast borders, tactile drop shadows, vibrant color-pop accents, and sticker tags.',
+    name: 'Vanguard SaaS',
+    tagline: 'High-Impact Product & Tech Academy',
+    description: 'Vibrant high-contrast surfaces, luminous indigo gradients, browser-framed hero previews, and responsive bento cards.',
     thumbnail: 'assets/neo-brutalism-thumb.svg',
-    tags: ['High Contrast', 'Bold', 'Playful', 'Indie']
+    tags: ['High Impact', 'SaaS', 'Bento', 'Modern']
   },
   {
     id: 'midnight-aurora',
-    name: 'Midnight Aurora',
-    tagline: 'Obsidian Glow / Elite AI & High-Tech',
-    description: 'Deep obsidian backdrop with ambient radiant aurora mesh gradients, frosted glass cards, and neon accents.',
+    name: 'Obsidian Horizon',
+    tagline: 'Modern Dark Luxury & AI Tech',
+    description: 'Deep obsidian canvas with subtle micro-grid, ambient radial glows, frosted glass cards, and luminous cyan accents.',
     thumbnail: 'assets/midnight-aurora-thumb.svg',
-    tags: ['Dark Mode', 'Glassmorphism', 'High Tech', 'Modern']
+    tags: ['Dark Luxury', 'High Tech', 'Glassmorphism', 'Modern']
   },
   {
     id: 'atelier',
-    name: 'Atelier Editorial',
-    tagline: 'Warm Editorial / Cultural Academy',
-    description: 'Refined Italian paper warmth, classic high-contrast serif headlines, hairline borders, and book-jacket card layouts.',
+    name: 'Atelier Minimal',
+    tagline: 'Nordic Architectural & Swiss Editorial',
+    description: 'Warm linen surfaces, high-contrast serif headlines, hairline borders, and refined book-jacket course presentations.',
     thumbnail: 'assets/atelier-thumb.svg',
-    tags: ['Editorial', 'Serif', 'Minimalist', 'Sophisticated']
+    tags: ['Editorial', 'Minimalist', 'Architectural', 'Refined']
   }
 ];
 
 export function getTemplateById(id: string): TemplateDefinition | undefined {
   return TEMPLATES.find((t) => t.id === id);
 }
-

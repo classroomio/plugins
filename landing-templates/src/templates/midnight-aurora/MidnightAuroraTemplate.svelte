@@ -11,7 +11,10 @@
   let { viewModel }: { viewModel: NormalizedLandingViewModel } = $props();
 </script>
 
-<div class="midnight-aurora-theme">
+<div class="obsidian-theme">
+  <!-- Subtle micro-grid background pattern -->
+  <div class="bg-grid-overlay" aria-hidden="true"></div>
+
   <Nav
     organization={viewModel.organization}
     navigation={viewModel.navigation}
@@ -49,10 +52,29 @@
 </div>
 
 <style>
-  .midnight-aurora-theme {
-    background-color: #090a0f;
+  .obsidian-theme {
+    position: relative;
+    background-color: #08090d;
     color: #f8fafc;
     min-height: 100vh;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .bg-grid-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.7) 0%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.7) 0%, transparent 80%);
+    z-index: 0;
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
   }
 </style>

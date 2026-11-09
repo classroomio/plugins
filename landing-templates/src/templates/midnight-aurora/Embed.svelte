@@ -9,11 +9,10 @@
     e.preventDefault();
     requestNavigation(href);
   }
-
 </script>
 
 {#if embed.enabled !== false}
-  <section class="aurora-embed">
+  <section class="obsidian-embed">
     <div class="embed-container">
       <div class="header">
         <h2 class="title">{embed.title}</h2>
@@ -23,7 +22,7 @@
       </div>
 
       <div class="frame-wrap">
-        <div class="frame-glow"></div>
+        <div class="frame-glow" aria-hidden="true"></div>
         <div class="frame-surface">
           <iframe
             src={embed.url}
@@ -38,6 +37,7 @@
       {#if embed.secondaryAction}
         <div class="action-wrap">
           <button
+            type="button"
             class="btn-action"
             onclick={(e) => handleAction(embed.secondaryAction!.href, e)}
           >
@@ -51,80 +51,85 @@
 {/if}
 
 <style>
-  .aurora-embed {
+  .obsidian-embed {
     padding: 5rem 1.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
-    background: #090a0f;
+    background: #08090d;
   }
 
   .embed-container {
     max-width: 1000px;
     margin: 0 auto;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .header {
+    text-align: center;
     margin-bottom: 2.5rem;
   }
 
   .title {
-    margin: 0 0 0.75rem;
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.75rem, 3.5vw, 2.375rem);
     font-weight: 800;
+    letter-spacing: -0.025em;
     color: #ffffff;
   }
 
   .description {
-    margin: 0 auto;
-    font-size: 1.0625rem;
+    margin: 0;
+    font-size: 1rem;
     color: #94a3b8;
-    max-width: 600px;
   }
 
   .frame-wrap {
     position: relative;
     width: 100%;
+    border-radius: 16px;
   }
 
   .frame-glow {
     position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at center, rgba(6, 182, 212, 0.25) 0%, transparent 70%);
-    filter: blur(40px);
+    inset: -2px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(6, 182, 212, 0.35));
+    filter: blur(12px);
+    opacity: 0.5;
     pointer-events: none;
   }
 
   .frame-surface {
     position: relative;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #000000;
-    overflow: hidden;
+    width: 100%;
     aspect-ratio: 16 / 9;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0d0f17;
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   .embed-iframe {
     width: 100%;
     height: 100%;
-    border: 0;
+    border: none;
+    display: block;
   }
 
   .action-wrap {
     margin-top: 2rem;
-    display: flex;
-    justify-content: center;
   }
 
   .btn-action {
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    padding: 0.75rem 1.5rem;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 0.65rem 1.25rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     color: #f8fafc;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
@@ -132,7 +137,7 @@
   }
 
   .btn-action:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(34, 211, 238, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(99, 102, 241, 0.45);
   }
 </style>

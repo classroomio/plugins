@@ -12,108 +12,119 @@
 </script>
 
 {#if callout.enabled !== false}
-  <section class="neo-callout">
-    <div class="callout-box">
-      <div class="callout-content">
+  <section class="vanguard-callout">
+    <div class="callout-card">
+      <div class="glow-bg"></div>
+      <div class="callout-inner">
         <h2 class="heading">{callout.heading}</h2>
+
         {#if callout.description}
           <p class="description">{callout.description}</p>
         {/if}
-      </div>
 
-      {#if callout.action}
-        <div class="callout-action">
-          <button
-            class="neo-btn-cta"
-            onclick={(e) => handleAction(callout.action.href, e)}
-          >
-            <span>{callout.action.label}</span>
-            <ArrowRight size={18} strokeWidth={2.5} />
-          </button>
-        </div>
-      {/if}
+        {#if callout.action}
+          <div class="action-wrap">
+            <button
+              class="btn-cta"
+              onclick={(e) => handleAction(callout.action.href, e)}
+            >
+              <span>{callout.action.label}</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        {/if}
+      </div>
     </div>
   </section>
 {/if}
 
 <style>
-  .neo-callout {
-    padding: 3.5rem 1.5rem;
-    border-top: 3px solid #18181b;
-    background: #fbf9f1;
+  .vanguard-callout {
+    padding: 6rem 2rem;
+    background: #ffffff;
   }
 
-  .callout-box {
-    max-width: 1100px;
+  .callout-card {
+    max-width: 1040px;
     margin: 0 auto;
-    border: 3.5px solid #18181b;
-    border-radius: 12px;
-    background: #fb7185;
-    padding: 3rem 2.5rem;
-    box-shadow: 7px 7px 0px #18181b;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
-    flex-wrap: wrap;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    border-radius: 20px;
+    padding: 5rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 48px -12px rgba(15, 23, 42, 0.25);
   }
 
-  @media (max-width: 768px) {
-    .callout-box {
-      padding: 2rem 1.5rem;
-      flex-direction: column;
-      align-items: flex-start;
-    }
+  .glow-bg {
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+    pointer-events: none;
   }
 
-  .callout-content {
-    flex: 1;
-    min-width: 280px;
+  .callout-inner {
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+    position: relative;
+    z-index: 1;
   }
 
   .heading {
-    margin: 0 0 0.5rem;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    margin: 0 0 1rem;
+    font-size: clamp(2.25rem, 4.5vw, 3.25rem);
     font-weight: 800;
-    color: #18181b;
     line-height: 1.15;
+    letter-spacing: -0.03em;
+    color: #ffffff;
   }
 
   .description {
-    margin: 0;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.0625rem;
-    line-height: 1.5;
-    color: #18181b;
-    font-weight: 500;
-    max-width: 600px;
+    margin: 0 auto 2.5rem;
+    font-size: 1.125rem;
+    line-height: 1.65;
+    color: #cbd5e1;
+    max-width: 540px;
   }
 
-  .neo-btn-cta {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.0625rem;
-    font-weight: 800;
-    padding: 0.85rem 1.75rem;
-    background: #ffffff;
-    color: #18181b;
-    border: 3px solid #18181b;
-    border-radius: 8px;
+  .action-wrap {
+    display: flex;
+    justify-content: center;
+  }
+
+  .btn-cta {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    border: none;
+    padding: 0.875rem 2rem;
+    border-radius: 10px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    box-shadow: 5px 5px 0px #18181b;
-    transition: all 0.12s ease;
-    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
   }
 
-  .neo-btn-cta:active {
-    transform: translate(3px, 3px);
-    box-shadow: 2px 2px 0px #18181b;
+  .btn-cta:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(79, 70, 229, 0.5);
   }
 
-  .neo-btn-cta:hover {
-    background: #fde047;
+  @media (max-width: 640px) {
+    .vanguard-callout {
+      padding: 4rem 1.25rem;
+    }
+
+    .callout-card {
+      padding: 3.5rem 1.5rem;
+    }
   }
 </style>

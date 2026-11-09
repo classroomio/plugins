@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { NormalizedLandingViewModel } from '../../shared/types';
   import { requestNavigation, requestAuth } from '../../shared/bridge';
-  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
 
   let {
     organization,
@@ -24,7 +24,7 @@
   }
 </script>
 
-<header class="neo-nav">
+<header class="vanguard-nav">
   <div class="nav-container">
     <a href="/" class="brand" onclick={(e) => handleNav('/', e)}>
       {#if organization.logoUrl}
@@ -43,14 +43,14 @@
 
     <div class="nav-actions">
       {#if actions.account}
-        <button class="neo-btn neo-btn-sm neo-btn-yellow" onclick={handleAuth}>
+        <button class="btn-action" onclick={handleAuth}>
           <span>{actions.account.label}</span>
-          <ArrowUpRight size={14} strokeWidth={2.5} />
+          <ArrowRight size={14} />
         </button>
       {:else if actions.signIn}
-        <button class="neo-btn neo-btn-sm neo-btn-yellow" onclick={handleAuth}>
+        <button class="btn-action" onclick={handleAuth}>
           <span>{actions.signIn.label}</span>
-          <ArrowUpRight size={14} strokeWidth={2.5} />
+          <ArrowRight size={14} />
         </button>
       {/if}
     </div>
@@ -58,105 +58,115 @@
 </header>
 
 <style>
-  .neo-nav {
-    border-bottom: 3px solid #18181b;
-    background: #fefdf8;
+  .vanguard-nav {
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     position: sticky;
     top: 0;
     z-index: 50;
+    transition: all 0.2s ease;
   }
 
   .nav-container {
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
-    padding: 1rem 1.5rem;
+    padding: 1.125rem 2rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1.5rem;
+    gap: 2rem;
   }
 
   .brand {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.875rem;
     text-decoration: none;
-    color: #18181b;
+    color: #0f172a;
+    transition: opacity 0.2s ease;
+  }
+
+  .brand:hover {
+    opacity: 0.85;
   }
 
   .logo {
     height: 2.25rem;
     width: auto;
+    max-width: 140px;
     object-fit: contain;
-    border: 2px solid #18181b;
-    border-radius: 4px;
-    background: #ffffff;
+    border-radius: 6px;
   }
 
   .org-name {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #18181b;
+    letter-spacing: -0.025em;
+    color: #0f172a;
   }
 
   .links {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-  }
-
-  @media (max-width: 768px) {
-    .links {
-      display: none;
-    }
+    gap: 2rem;
   }
 
   .nav-link {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #18181b;
+    color: #64748b;
     text-decoration: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    transition: background 0.15s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    padding: 0.25rem 0;
+    transition: color 0.15s ease;
   }
 
   .nav-link:hover {
-    background: #fde047;
+    color: #4f46e5;
   }
 
-  .neo-btn {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    border: 2.5px solid #18181b;
-    border-radius: 6px;
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .btn-action {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    border: none;
+    padding: 0.5625rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.4rem;
     cursor: pointer;
-    box-shadow: 3px 3px 0px #18181b;
-    transition: all 0.12s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
   }
 
-  .neo-btn:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0px #18181b;
+  .btn-action:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
   }
 
-  .neo-btn-sm {
-    padding: 0.4rem 0.85rem;
-    font-size: 0.875rem;
+  .btn-action:active {
+    transform: translateY(0);
   }
 
-  .neo-btn-yellow {
-    background: #fde047;
-    color: #18181b;
-  }
+  @media (max-width: 768px) {
+    .nav-container {
+      padding: 1rem 1.25rem;
+    }
 
-  .neo-btn-yellow:hover {
-    background: #fef08a;
+    .links {
+      display: none;
+    }
   }
 </style>

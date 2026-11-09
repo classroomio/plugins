@@ -21,26 +21,30 @@
   }
 </script>
 
-<section class="aurora-hero">
+<section class="obsidian-hero">
   <!-- Radiant ambient glow elements -->
-  <div class="mesh-glow mesh-1"></div>
-  <div class="mesh-glow mesh-2"></div>
+  <div class="mesh-glow mesh-1" aria-hidden="true"></div>
+  <div class="mesh-glow mesh-2" aria-hidden="true"></div>
 
   <div class="hero-container">
     <div class="hero-content">
       {#if hero.eyebrow}
         <div class="eyebrow-pill">
-          <span class="pulse-dot"></span>
+          <span class="pulse-dot" aria-hidden="true"></span>
           <span>{hero.eyebrow}</span>
         </div>
       {/if}
 
       <h1 class="heading">{hero.heading}</h1>
-      <p class="subheading">{hero.subheading}</p>
+
+      {#if hero.subheading}
+        <p class="subheading">{hero.subheading}</p>
+      {/if}
 
       <div class="cta-row">
         {#if hero.primaryAction}
           <button
+            type="button"
             class="btn-aurora"
             disabled={hero.primaryAction.disabled}
             onclick={(e) => handleAction(hero.primaryAction!.href, e)}
@@ -52,6 +56,7 @@
 
         {#if hero.secondaryAction}
           <button
+            type="button"
             class="btn-glass"
             onclick={(e) => handleAction(hero.secondaryAction!.href, e)}
           >
@@ -84,9 +89,9 @@
 </section>
 
 <style>
-  .aurora-hero {
+  .obsidian-hero {
     position: relative;
-    padding: 6rem 1.5rem 5rem;
+    padding: 5.5rem 1.5rem 4.5rem;
     overflow: hidden;
   }
 
@@ -94,24 +99,24 @@
     position: absolute;
     border-radius: 50%;
     pointer-events: none;
-    filter: blur(80px);
-    opacity: 0.35;
+    filter: blur(100px);
+    opacity: 0.3;
     z-index: 0;
   }
 
   .mesh-1 {
-    width: 500px;
-    height: 500px;
-    top: -100px;
-    left: 20%;
+    width: 550px;
+    height: 550px;
+    top: -120px;
+    left: 15%;
     background: radial-gradient(circle, #6366f1 0%, transparent 70%);
   }
 
   .mesh-2 {
-    width: 450px;
-    height: 450px;
-    top: 50px;
-    right: 15%;
+    width: 480px;
+    height: 480px;
+    top: 40px;
+    right: 12%;
     background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
   }
 
@@ -163,33 +168,32 @@
 
   .heading {
     margin: 0 0 1.25rem;
-    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-size: clamp(2.25rem, 4.5vw, 3.75rem);
     font-weight: 800;
-    line-height: 1.05;
-    letter-spacing: -0.03em;
+    line-height: 1.08;
+    letter-spacing: -0.035em;
     color: #ffffff;
   }
 
   .subheading {
-    margin: 0 0 2.25rem;
-    font-size: 1.125rem;
+    margin: 0 0 2rem;
+    font-size: 1.0625rem;
     line-height: 1.6;
     color: #94a3b8;
-    max-width: 560px;
+    max-width: 540px;
   }
 
   .cta-row {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
   }
 
   .btn-aurora {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 700;
-    padding: 0.875rem 1.75rem;
+    padding: 0.75rem 1.625rem;
     border-radius: 9999px;
     background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%);
     color: #ffffff;
@@ -198,13 +202,13 @@
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
     transition: all 0.2s ease;
   }
 
   .btn-aurora:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 35px rgba(99, 102, 241, 0.6);
+    box-shadow: 0 6px 28px rgba(99, 102, 241, 0.6);
   }
 
   .btn-aurora:disabled {
@@ -214,13 +218,12 @@
   }
 
   .btn-glass {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 600;
-    padding: 0.875rem 1.75rem;
+    padding: 0.75rem 1.625rem;
     border-radius: 9999px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     color: #f8fafc;
     display: inline-flex;
     align-items: center;
@@ -231,34 +234,34 @@
 
   .btn-glass:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.28);
   }
 
   .stats-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.875rem;
   }
 
   .stat-card {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
-    padding: 0.875rem 1.25rem;
+    padding: 0.75rem 1.125rem;
     display: flex;
     flex-direction: column;
-    min-width: 120px;
+    min-width: 110px;
   }
 
   .stat-value {
     font-family: 'Geist Mono', monospace;
-    font-size: 1.5rem;
+    font-size: 1.375rem;
     font-weight: 700;
     color: #ffffff;
   }
 
   .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 500;
     color: #64748b;
     text-transform: uppercase;
@@ -267,9 +270,9 @@
 
   .glass-frame {
     border-radius: 16px;
-    padding: 8px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 6px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
   }
 
@@ -279,6 +282,6 @@
     border-radius: 10px;
     display: block;
     object-fit: cover;
-    max-height: 480px;
+    max-height: 460px;
   }
 </style>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PublicLandingLinks } from '../../shared/types';
   import { requestNavigation } from '../../shared/bridge';
-  import ExternalLink from '@lucide/svelte/icons/external-link';
+  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
 
   let { links }: { links: PublicLandingLinks } = $props();
 
@@ -12,9 +12,10 @@
 </script>
 
 {#if links.enabled !== false && links.cards && links.cards.length > 0}
-  <section class="neo-links">
+  <section class="vanguard-links">
     <div class="links-container">
       <div class="header">
+        <div class="section-badge">Resources</div>
         <h2 class="heading">{links.heading}</h2>
         {#if links.description}
           <p class="description">{links.description}</p>
@@ -24,17 +25,19 @@
       <div class="cards-grid">
         {#each links.cards as card}
           <div class="link-card">
-            <div class="card-top">
-              <span class="icon">✦</span>
+            <div class="card-content">
+              <span class="card-icon">✦</span>
               <h3 class="card-title">{card.title}</h3>
+              {#if card.description}
+                <p class="card-desc">{card.description}</p>
+              {/if}
             </div>
-            <p class="card-desc">{card.description}</p>
             <button
-              class="neo-btn-link"
+              class="btn-card-read"
               onclick={(e) => handleAction(card.href, e)}
             >
-              <span>Explore Resource</span>
-              <ExternalLink size={14} strokeWidth={2.5} />
+              <span>Explore</span>
+              <ArrowUpRight size={14} />
             </button>
           </div>
         {/each}
@@ -44,109 +47,114 @@
 {/if}
 
 <style>
-  .neo-links {
-    padding: 4rem 1.5rem;
-    border-top: 3px solid #18181b;
-    background: #fefdf8;
+  .vanguard-links {
+    padding: 5.5rem 2rem;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
   }
 
   .links-container {
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
   }
 
   .header {
-    margin-bottom: 2.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .section-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4f46e5;
+    margin-bottom: 0.5rem;
   }
 
   .heading {
     margin: 0 0 0.5rem;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
     font-weight: 800;
-    color: #18181b;
+    letter-spacing: -0.03em;
+    color: #0f172a;
   }
 
   .description {
     margin: 0;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1rem;
-    color: #52525b;
+    font-size: 1.0625rem;
+    color: #64748b;
   }
 
   .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.75rem;
   }
 
   .link-card {
-    border: 3px solid #18181b;
-    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     background: #ffffff;
-    padding: 1.5rem;
-    box-shadow: 4px 4px 0px #18181b;
+    padding: 2rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    transition: all 0.12s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
 
   .link-card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0px #18181b;
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.08);
   }
 
-  .card-top {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .icon {
+  .card-icon {
     font-size: 1.25rem;
-    color: #fb7185;
+    color: #4f46e5;
+    display: block;
+    margin-bottom: 1rem;
   }
 
   .card-title {
-    margin: 0;
-    font-family: 'Space Grotesk', sans-serif;
+    margin: 0 0 0.5rem;
     font-size: 1.125rem;
     font-weight: 700;
-    color: #18181b;
+    letter-spacing: -0.02em;
+    color: #0f172a;
   }
 
   .card-desc {
-    margin: 0 0 1.25rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    margin: 0;
     font-size: 0.875rem;
-    line-height: 1.5;
-    color: #52525b;
-    flex: 1;
+    line-height: 1.6;
+    color: #64748b;
   }
 
-  .neo-btn-link {
-    font-family: 'Space Grotesk', sans-serif;
+  .btn-card-read {
+    margin-top: 1.5rem;
+    align-self: flex-start;
+    background: transparent;
+    color: #4f46e5;
+    border: none;
+    padding: 0;
     font-size: 0.875rem;
-    font-weight: 700;
-    padding: 0.5rem 0.875rem;
-    background: #a3e635;
-    color: #18181b;
-    border: 2px solid #18181b;
-    border-radius: 6px;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.375rem;
+    gap: 0.35rem;
     cursor: pointer;
-    box-shadow: 2px 2px 0px #18181b;
-    transition: all 0.12s ease;
-    align-self: flex-start;
+    transition: gap 0.15s ease;
   }
 
-  .neo-btn-link:active {
-    transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0px #18181b;
+  .btn-card-read:hover {
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 640px) {
+    .vanguard-links {
+      padding: 3.5rem 1.25rem;
+    }
   }
 </style>

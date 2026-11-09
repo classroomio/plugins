@@ -9,37 +9,47 @@
     e.preventDefault();
     requestNavigation(href);
   }
-
 </script>
 
 {#if embed.enabled !== false}
-  <section class="neo-embed">
+  <section class="vanguard-embed">
     <div class="embed-container">
-      <div class="embed-header">
+      <div class="header">
         <h2 class="title">{embed.title}</h2>
         {#if embed.description}
           <p class="description">{embed.description}</p>
         {/if}
       </div>
 
-      <div class="frame-box">
-        <iframe
-          src={embed.url}
-          title={embed.title}
-          class="embed-iframe"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen
-        ></iframe>
+      <div class="browser-board">
+        <div class="browser-header">
+          <div class="traffic-dots">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+          </div>
+          <div class="browser-title">{embed.title}</div>
+        </div>
+
+        <div class="frame-box">
+          <iframe
+            src={embed.url}
+            title={embed.title}
+            class="embed-iframe"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
       </div>
 
       {#if embed.secondaryAction}
-        <div class="action-row">
+        <div class="action-wrap">
           <button
-            class="neo-btn-action"
+            class="btn-action"
             onclick={(e) => handleAction(embed.secondaryAction!.href, e)}
           >
             <span>{embed.secondaryAction.label}</span>
-            <ArrowRight size={16} strokeWidth={2.5} />
+            <ArrowRight size={14} />
           </button>
         </div>
       {/if}
@@ -48,48 +58,96 @@
 {/if}
 
 <style>
-  .neo-embed {
-    padding: 4rem 1.5rem;
-    border-top: 3px solid #18181b;
-    background: #fefdf8;
+  .vanguard-embed {
+    padding: 5.5rem 2rem;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
   }
 
   .embed-container {
-    max-width: 1000px;
+    max-width: 1040px;
     margin: 0 auto;
     text-align: center;
   }
 
-  .embed-header {
-    margin-bottom: 2.5rem;
+  .header {
+    margin-bottom: 2.75rem;
   }
 
   .title {
     margin: 0 0 0.75rem;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
     font-weight: 800;
-    color: #18181b;
+    letter-spacing: -0.03em;
+    color: #0f172a;
   }
 
   .description {
-    margin: 0;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.0625rem;
-    color: #52525b;
-    max-width: 600px;
     margin: 0 auto;
+    font-size: 1.0625rem;
+    color: #64748b;
+    max-width: 580px;
+    line-height: 1.6;
+  }
+
+  .browser-board {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    overflow: hidden;
+    box-shadow: 0 20px 48px -12px rgba(15, 23, 42, 0.12);
+  }
+
+  .browser-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+
+  .traffic-dots {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+  }
+
+  .dot.red {
+    background: #ef4444;
+  }
+
+  .dot.yellow {
+    background: #f59e0b;
+  }
+
+  .dot.green {
+    background: #10b981;
+  }
+
+  .browser-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .frame-box {
-    border: 3px solid #18181b;
-    border-radius: 12px;
-    background: #000000;
-    box-shadow: 7px 7px 0px #18181b;
-    overflow: hidden;
     position: relative;
     aspect-ratio: 16 / 9;
-    width: 100%;
+    background: #000000;
   }
 
   .embed-iframe {
@@ -98,30 +156,36 @@
     border: 0;
   }
 
-  .action-row {
+  .action-wrap {
     margin-top: 2rem;
     display: flex;
     justify-content: center;
   }
 
-  .neo-btn-action {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1rem;
-    font-weight: 700;
-    padding: 0.75rem 1.5rem;
-    background: #fde047;
-    border: 2.5px solid #18181b;
+  .btn-action {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    padding: 0.625rem 1.25rem;
     border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     cursor: pointer;
-    box-shadow: 4px 4px 0px #18181b;
-    transition: all 0.12s ease;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
 
-  .neo-btn-action:active {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px #18181b;
+  .btn-action:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+  }
+
+  @media (max-width: 640px) {
+    .vanguard-embed {
+      padding: 3.5rem 1.25rem;
+    }
   }
 </style>

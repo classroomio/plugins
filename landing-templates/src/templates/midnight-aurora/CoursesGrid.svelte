@@ -22,7 +22,7 @@
   }
 </script>
 
-<section class="aurora-courses">
+<section class="obsidian-courses">
   <div class="courses-container">
     <div class="header-row">
       <div>
@@ -34,7 +34,7 @@
       </div>
 
       {#if hasMoreCourses}
-        <button class="btn-browse-all" onclick={handleViewAll}>
+        <button type="button" class="btn-browse-all" onclick={handleViewAll}>
           <span>{labels.coursesViewAll || 'Explore All Courses'}</span>
           <ArrowRight size={15} />
         </button>
@@ -64,10 +64,10 @@
 </section>
 
 <style>
-  .aurora-courses {
+  .obsidian-courses {
     padding: 5rem 1.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
-    background: #090a0f;
+    background: #08090d;
   }
 
   .courses-container {
@@ -98,7 +98,7 @@
     margin: 0;
     font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     color: #ffffff;
   }
 
@@ -125,7 +125,7 @@
 
   .btn-browse-all:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(34, 211, 238, 0.4);
+    border-color: rgba(99, 102, 241, 0.45);
   }
 
   .grid {
