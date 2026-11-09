@@ -64,15 +64,34 @@ On your production ClassroomIO backend, configure the following environment vari
 # Public CDN origin where Cloudflare R2 is served
 PLUGIN_ASSET_ORIGIN="https://plugins.classroomio.com"
 
+# Storage bucket containing released plugin assets (used by release registration to verify archives)
+PLUGIN_ASSET_BUCKET="classroomio-plugins"
+
 # Shared deploy secret for automated release registration (at least 32 random characters)
 PLUGIN_RELEASE_DEPLOY_TOKEN="generate-a-secure-random-token-here"
 ```
+
+> [!NOTE]
+> The ClassroomIO API also requires object storage credentials configured (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCESS_KEY`, `CLOUDFLARE_SECRET_ACCESS_KEY` or `OBJECT_STORAGE_*`). When `POST /internal/plugin-releases` is called, the API downloads the archive from `PLUGIN_ASSET_BUCKET` to verify its SHA-256 digest before registering the version.
 
 Restart the API service after updating environment variables.
 
 ---
 
-## 3. GitHub Actions Environment Configuration
+## 3. ClassroomIO Dashboard Configuration
+
+On your production ClassroomIO frontend, configure the following environment variable in `apps/dashboard/.env`:
+
+```bash
+# Public CDN origin where released plugin assets are served (required so Content Security Policy allows plugin iframes and assets)
+PUBLIC_PLUGIN_ASSET_ORIGIN="https://plugins.classroomio.com"
+```
+
+Restart the dashboard service after updating environment variables.
+
+---
+
+## 4. GitHub Actions Environment Configuration
 
 The release workflow (`.github/workflows/release-plugins.yml`) targets the `plugin-production` GitHub Environment.
 
@@ -102,14 +121,14 @@ In the `plugin-production` environment, add the following variable:
 
 ---
 
-## 4. Release Verification & Rollbacks
+## 5. Release Verification & Rollbacks
 
 - **Immutability**: The upload script (`scripts/upload-release.mjs`) uploads files with `IfNoneMatch: "*"` and `CacheControl: "public, max-age=31536000, immutable"`. If an object key already exists, the upload asserts that the existing bytes match the local build. It will fail rather than silently overwrite.
 - **Rollbacks**: If a released plugin version is broken, increment its patch version in `plugin.json` (e.g. `1.0.1` -> `1.0.2`), submit a fix PR, and merge. Alternatively, mark the version revoked in the ClassroomIO database using the admin CLI.
 
 ---
 
-## 5. SDK Dependency & Decoupling Architecture
+## 6. SDK Dependency & Decoupling Architecture
 
 ### Why ClassroomIO is Currently Pinned to a Specific Commit
 
@@ -119,7 +138,7 @@ In both `.github/workflows/plugin-pr.yml` and `.github/workflows/release-plugins
 - uses: actions/checkout@v4
   with:
     repository: classroomio/classroomio
-    ref: d0d2453b973b8045a9e470640d963f47e4f31803
+    ref: aa67abfb1b70ca199c0dae8d356dc7a518fbbe8f
     path: core
 ```
 

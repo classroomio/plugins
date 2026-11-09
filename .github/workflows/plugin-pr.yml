@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: classroomio/classroomio
-          ref: d0d2453b973b8045a9e470640d963f47e4f31803
+          ref: aa67abfb1b70ca199c0dae8d356dc7a518fbbe8f
           path: core
       - name: Link pinned ClassroomIO boundary packages
         run: ln -s "$GITHUB_WORKSPACE/core" "$GITHUB_WORKSPACE/../classroomio"
