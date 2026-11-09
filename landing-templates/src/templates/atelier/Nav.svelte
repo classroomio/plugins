@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { NormalizedLandingViewModel } from '../../shared/types';
   import { requestNavigation, requestAuth } from '../../shared/bridge';
-  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
 
   let {
     organization,
@@ -13,177 +12,144 @@
     actions: NormalizedLandingViewModel['actions'];
   } = $props();
 
-  function handleNav(href: string, e: MouseEvent) {
+  const half = $derived(Math.ceil(navigation.length / 2));
+  const leftLinks = $derived(navigation.slice(0, half));
+  const rightLinks = $derived(navigation.slice(half));
+  const accountAction = $derived(actions.account ?? actions.signIn);
+
+  function go(href: string, e: MouseEvent) {
     e.preventDefault();
     requestNavigation(href);
   }
 
-  function handleAuth(e: MouseEvent) {
+  function auth(e: MouseEvent) {
     e.preventDefault();
     requestAuth();
   }
 </script>
 
-<header class="atelier-nav">
-  <div class="nav-container">
-    <a href="/" class="brand" onclick={(e) => handleNav('/', e)}>
-      {#if organization.logoUrl}
-        <img src={organization.logoUrl} alt={organization.name} class="logo" />
-      {/if}
-      <span class="org-name">{organization.name}</span>
-    </a>
-
-    <nav class="links">
-      {#each navigation as item}
-        <a href={item.href} class="nav-link" onclick={(e) => handleNav(item.href, e)}>
-          <span>{item.label}</span>
-        </a>
+<header>
+  <div class="bar">
+    <nav class="side left">
+      {#each leftLinks as item}
+        <a href={item.href} onclick={(e) => go(item.href, e)}>{item.label}</a>
       {/each}
     </nav>
 
-    <div class="nav-actions">
-      {#if actions.account}
-        <button class="btn-pill" onclick={handleAuth}>
-          <span>{actions.account.label}</span>
-          <ArrowUpRight size={14} />
-        </button>
-      {:else if actions.signIn}
-        <button class="btn-pill" onclick={handleAuth}>
-          <span>{actions.signIn.label}</span>
-          <ArrowUpRight size={14} />
-        </button>
+    <a class="brand" href="/" onclick={(e) => go('/', e)}>
+      {#if organization.logoUrl}
+        <img src={organization.logoUrl} alt={organization.name} />
       {/if}
-    </div>
+      <span>{organization.name}</span>
+    </a>
+
+    <nav class="side right">
+      {#each rightLinks as item}
+        <a href={item.href} onclick={(e) => go(item.href, e)}>{item.label}</a>
+      {/each}
+      {#if accountAction}
+        <button onclick={auth}>{accountAction.label}</button>
+      {/if}
+    </nav>
   </div>
 </header>
 
 <style>
-  .atelier-nav {
-    border-bottom: 1px solid rgba(17, 17, 20, 0.08);
-    background: rgba(248, 248, 249, 0.9);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+  header {
+    background: #f6f3ec;
+    border-bottom: 3px double #1a1713;
     position: sticky;
     top: 0;
-    z-index: 50;
-    transition: border-color 0.2s ease;
+    z-index: 40;
   }
 
-  .nav-container {
-    max-width: 1240px;
+  .bar {
+    max-width: 80rem;
     margin: 0 auto;
-    padding: 1.125rem 2rem;
-    display: flex;
+    padding: 1.4rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     gap: 2rem;
   }
 
   .brand {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
+    gap: 0.75rem;
     text-decoration: none;
-    color: #111114;
-    transition: opacity 0.2s ease;
+    color: #1a1713;
   }
 
-  .brand:hover {
-    opacity: 0.85;
-  }
-
-  .logo {
-    height: 2.125rem;
+  .brand img {
+    height: 2rem;
     width: auto;
-    max-width: 140px;
-    object-fit: contain;
-    border-radius: 4px;
   }
 
-  .org-name {
-    font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
-    font-size: 1.35rem;
+  .brand span {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2rem;
     font-weight: 500;
-    letter-spacing: -0.02em;
-    color: #111114;
+    font-style: italic;
+    letter-spacing: -0.03em;
   }
 
-  .links {
+  .side {
     display: flex;
+    gap: 2rem;
     align-items: center;
-    gap: 2.25rem;
   }
 
-  .nav-link {
-    color: #52525b;
+  .right {
+    justify-content: flex-end;
+  }
+
+  .side a {
+    color: #3d372e;
     text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    position: relative;
-    padding: 0.25rem 0;
-    transition: color 0.15s ease;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 600;
   }
 
-  .nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 1px;
-    background-color: #111114;
-    transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  .side a:hover {
+    color: #a3340f;
   }
 
-  .nav-link:hover {
-    color: #111114;
-  }
-
-  .nav-link:hover::after {
-    width: 100%;
-  }
-
-  .nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .btn-pill {
-    background: #111114;
-    color: #ffffff;
-    border: none;
-    padding: 0.5625rem 1.25rem;
-    border-radius: 9999px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
+  button {
+    font: inherit;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 600;
+    color: #f6f3ec;
+    background: #1a1713;
+    border: 0;
+    padding: 0.65rem 1.2rem;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   }
 
-  .btn-pill:hover {
-    background: #27272a;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(17, 17, 20, 0.12);
+  button:hover {
+    background: #a3340f;
   }
 
-  .btn-pill:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    .nav-container {
+  @media (max-width: 800px) {
+    .bar {
+      grid-template-columns: 1fr auto;
       padding: 1rem 1.25rem;
     }
 
-    .links {
+    .left {
       display: none;
+    }
+
+    .right a {
+      display: none;
+    }
+
+    .brand {
+      order: -1;
     }
   }
 </style>

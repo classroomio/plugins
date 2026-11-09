@@ -16,164 +16,143 @@
     labels: PublicLandingLabels;
   } = $props();
 
-  function handleViewAll(e: MouseEvent) {
+  const spotlight = $derived(courses[0]);
+  const rest = $derived(courses.slice(1));
+
+  function viewAll(e: MouseEvent) {
     e.preventDefault();
     requestNavigation('/courses');
   }
 </script>
 
-<section class="obsidian-courses">
-  <div class="courses-container">
-    <div class="header-row">
+<section class="courses">
+  <div class="wrap">
+    <header>
       <div>
-        <span class="section-kicker">✦ Curriculum</span>
-        <h2 class="section-heading">{labels.coursesHeading || 'Featured Tracks & Courses'}</h2>
-        {#if labels.coursesSubheading}
-          <p class="section-subheading">{labels.coursesSubheading}</p>
-        {/if}
+        <h2>{labels.coursesHeading}</h2>
+        {#if labels.coursesSubheading}<p>{labels.coursesSubheading}</p>{/if}
       </div>
-
       {#if hasMoreCourses}
-        <button type="button" class="btn-browse-all" onclick={handleViewAll}>
-          <span>{labels.coursesViewAll || 'Explore All Courses'}</span>
-          <ArrowRight size={15} />
-        </button>
+        <button onclick={viewAll}>{labels.coursesViewAll}<ArrowRight size={16} /></button>
       {/if}
-    </div>
+    </header>
 
     {#if !coursesLoaded}
-      <div class="loading-box">
-        <span class="pulse-text">Loading curriculum...</span>
-      </div>
+      <div class="state"><div class="spinner"></div></div>
     {:else if courses.length === 0}
-      <div class="empty-box">
-        <div class="empty-inner">
-          <span class="empty-glyph">✧</span>
-          <h3 class="empty-title">{labels.coursesEmptyTitle || 'No courses published yet'}</h3>
-          <p class="empty-desc">{labels.coursesEmptyDescription || 'New tracks will be announced shortly.'}</p>
-        </div>
+      <div class="state empty">
+        <h3>{labels.coursesEmptyTitle}</h3>
+        <p>{labels.coursesEmptyDescription}</p>
       </div>
     {:else}
-      <div class="grid">
-        {#each courses as course (course.id)}
-          <CourseCard {course} {labels} />
-        {/each}
-      </div>
+      <CourseCard course={spotlight} {labels} variant="feature" index={0} />
+
+      {#if rest.length > 0}
+        <div class="list">
+          {#each rest as course, i (course.id)}
+            <CourseCard {course} {labels} variant="row" index={i + 1} />
+          {/each}
+        </div>
+      {/if}
     {/if}
   </div>
 </section>
 
 <style>
-  .obsidian-courses {
-    padding: 5rem 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    background: #08090d;
+  .courses {
+    padding: 6rem 1.5rem;
   }
 
-  .courses-container {
-    max-width: 1200px;
+  .wrap {
+    max-width: 72rem;
     margin: 0 auto;
   }
 
-  .header-row {
+  header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 2.5rem;
     gap: 1.5rem;
     flex-wrap: wrap;
+    margin-bottom: 2.5rem;
   }
 
-  .section-kicker {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #22d3ee;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    display: block;
-    margin-bottom: 0.5rem;
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(2rem, 4vw, 3rem);
+    letter-spacing: -0.04em;
+    color: #fff;
   }
 
-  .section-heading {
+  header p {
     margin: 0;
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    color: #ffffff;
+    color: #8b93a5;
+    max-width: 34rem;
   }
 
-  .section-subheading {
-    margin: 0.5rem 0 0;
-    font-size: 1rem;
-    color: #94a3b8;
-  }
-
-  .btn-browse-all {
-    font-size: 0.875rem;
+  button {
+    font: inherit;
     font-weight: 600;
-    padding: 0.65rem 1.25rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.04);
+    color: #e0e7ff;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #f8fafc;
-    display: flex;
+    border-radius: 999px;
+    padding: 0.65rem 1.2rem;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.2s ease;
   }
 
-  .btn-browse-all:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(99, 102, 241, 0.45);
+  button:hover {
+    background: rgba(255, 255, 255, 0.1);
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 2rem;
+  .list {
+    margin-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 1rem;
+    display: flex;
+    flex-direction: column;
   }
 
-  .loading-box,
-  .empty-box {
-    padding: 4rem 1rem;
+  .state {
     display: flex;
     justify-content: center;
+    padding: 4rem 0;
   }
 
-  .pulse-text {
-    font-family: 'Geist Mono', monospace;
-    font-size: 0.875rem;
-    color: #64748b;
-  }
-
-  .empty-inner {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 12px;
-    padding: 3rem 2rem;
+  .empty {
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    max-width: 440px;
-    width: 100%;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 1.25rem;
+    color: #8b93a5;
   }
 
-  .empty-glyph {
-    font-size: 2.5rem;
-    color: #22d3ee;
-    display: block;
-    margin-bottom: 0.75rem;
+  .empty h3 {
+    margin: 0 0 0.4rem;
+    color: #fff;
   }
 
-  .empty-title {
-    margin: 0 0 0.5rem;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #ffffff;
-  }
-
-  .empty-desc {
+  .empty p {
     margin: 0;
-    font-size: 0.875rem;
-    color: #64748b;
+  }
+
+  .spinner {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-top-color: #818cf8;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

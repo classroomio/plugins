@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { NormalizedLandingViewModel } from '../../shared/types';
   import { requestNavigation, requestAuth } from '../../shared/bridge';
-  import ArrowRight from '@lucide/svelte/icons/arrow-right';
 
   let {
     organization,
@@ -13,160 +12,136 @@
     actions: NormalizedLandingViewModel['actions'];
   } = $props();
 
-  function handleNav(href: string, e: MouseEvent) {
+  const accountAction = $derived(actions.account ?? actions.signIn);
+
+  function go(href: string, e: MouseEvent) {
     e.preventDefault();
     requestNavigation(href);
   }
 
-  function handleAuth(e: MouseEvent) {
+  function auth(e: MouseEvent) {
     e.preventDefault();
     requestAuth();
   }
 </script>
 
-<header class="vanguard-nav">
-  <div class="nav-container">
-    <a href="/" class="brand" onclick={(e) => handleNav('/', e)}>
+<header>
+  <div class="bar">
+    <a class="brand" href="/" onclick={(e) => go('/', e)}>
       {#if organization.logoUrl}
-        <img src={organization.logoUrl} alt={organization.name} class="logo" />
+        <img src={organization.logoUrl} alt={organization.name} />
+      {:else}
+        <span class="mark">{organization.name.slice(0, 1)}</span>
       {/if}
-      <span class="org-name">{organization.name}</span>
+      <span class="name">{organization.name}</span>
     </a>
 
-    <nav class="links">
+    <nav>
       {#each navigation as item}
-        <a href={item.href} class="nav-link" onclick={(e) => handleNav(item.href, e)}>
-          {item.label}
-        </a>
+        <a href={item.href} onclick={(e) => go(item.href, e)}>{item.label}</a>
       {/each}
     </nav>
 
-    <div class="nav-actions">
-      {#if actions.account}
-        <button class="btn-action" onclick={handleAuth}>
-          <span>{actions.account.label}</span>
-          <ArrowRight size={14} />
-        </button>
-      {:else if actions.signIn}
-        <button class="btn-action" onclick={handleAuth}>
-          <span>{actions.signIn.label}</span>
-          <ArrowRight size={14} />
-        </button>
-      {/if}
-    </div>
+    {#if accountAction}
+      <button onclick={auth}>{accountAction.label}</button>
+    {/if}
   </div>
 </header>
 
 <style>
-  .vanguard-nav {
-    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+  header {
     position: sticky;
     top: 0;
-    z-index: 50;
-    transition: all 0.2s ease;
+    z-index: 40;
+    padding: 0.9rem 1rem 0;
+    background: linear-gradient(#0a0e22, rgba(10, 14, 34, 0));
   }
 
-  .nav-container {
-    max-width: 1240px;
+  .bar {
+    max-width: 76rem;
     margin: 0 auto;
-    padding: 1.125rem 2rem;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
+    gap: 1.5rem;
+    padding: 0.6rem 0.75rem 0.6rem 1.1rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 8px 30px rgba(5, 8, 30, 0.35);
   }
 
   .brand {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
+    gap: 0.65rem;
     text-decoration: none;
-    color: #0f172a;
-    transition: opacity 0.2s ease;
+    color: #0b1020;
   }
 
-  .brand:hover {
-    opacity: 0.85;
-  }
-
-  .logo {
-    height: 2.25rem;
+  .brand img {
+    height: 1.9rem;
     width: auto;
-    max-width: 140px;
-    object-fit: contain;
-    border-radius: 6px;
   }
 
-  .org-name {
-    font-size: 1.125rem;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    color: #0f172a;
+  .mark {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.55rem;
+    color: #fff;
+    font-weight: 800;
+    background: linear-gradient(135deg, #4f46e5, #ec4899);
   }
 
-  .links {
+  .name {
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  nav {
+    margin-left: auto;
     display: flex;
-    align-items: center;
-    gap: 2rem;
+    gap: 0.25rem;
   }
 
-  .nav-link {
-    color: #64748b;
+  nav a {
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.6rem;
+    color: #475069;
     text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    padding: 0.25rem 0;
-    transition: color 0.15s ease;
+    font-size: 0.9rem;
+    font-weight: 600;
   }
 
-  .nav-link:hover {
+  nav a:hover {
+    background: #eef0fb;
     color: #4f46e5;
   }
 
-  .nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .btn-action {
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-    color: #ffffff;
-    border: none;
-    padding: 0.5625rem 1.25rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
+  button {
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+    border: 0;
+    padding: 0.6rem 1.1rem;
+    border-radius: 0.7rem;
+    background: #0b1020;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
   }
 
-  .btn-action:hover {
-    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  button:hover {
+    background: #4f46e5;
   }
 
-  .btn-action:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    .nav-container {
-      padding: 1rem 1.25rem;
+  @media (max-width: 760px) {
+    nav {
+      display: none;
     }
 
-    .links {
-      display: none;
+    button {
+      margin-left: auto;
     }
   }
 </style>

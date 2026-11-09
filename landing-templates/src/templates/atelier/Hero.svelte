@@ -8,273 +8,217 @@
   let failedImageSrc = $state<string | null>(null);
   const heroImageSrc = $derived(hero.image && hero.image !== failedImageSrc ? hero.image : undefined);
 
-  function handleAction(href: string, e: MouseEvent) {
+  function go(href: string, e: MouseEvent) {
     e.preventDefault();
     requestNavigation(href);
   }
 
-  function handleImageError() {
-    if (hero.image) {
-      failedImageSrc = hero.image;
-    }
+  function imageFailed() {
+    if (hero.image) failedImageSrc = hero.image;
   }
 </script>
 
-<section class="atelier-hero">
-  <div class="hero-container">
-    <div class="hero-text">
-      {#if hero.eyebrow}
-        <div class="eyebrow-wrap">
-          <span class="eyebrow">{hero.eyebrow}</span>
-        </div>
-      {/if}
+<section>
+  <div class="wrap">
+    {#if hero.eyebrow}
+      <p class="eyebrow"><span></span>{hero.eyebrow}</p>
+    {/if}
 
-      <h1 class="heading">{hero.heading}</h1>
+    <h1>{hero.heading}</h1>
 
-      {#if hero.subheading}
-        <p class="subheading">{hero.subheading}</p>
-      {/if}
-
-      <div class="cta-row">
-        {#if hero.primaryAction}
-          <button
-            class="btn-primary"
-            disabled={hero.primaryAction.disabled}
-            onclick={(e) => handleAction(hero.primaryAction!.href, e)}
-          >
-            <span>{hero.primaryAction.label}</span>
-            <ArrowRight size={16} />
-          </button>
+    <div class="spread" class:solo={!heroImageSrc}>
+      <aside>
+        {#if hero.subheading}
+          <p class="lede">{hero.subheading}</p>
         {/if}
 
-        {#if hero.secondaryAction}
-          <button
-            class="btn-secondary"
-            onclick={(e) => handleAction(hero.secondaryAction!.href, e)}
-          >
-            <span>{hero.secondaryAction.label}</span>
-          </button>
-        {/if}
-      </div>
-
-      {#if hero.stats && hero.stats.length > 0}
-        <div class="stats-grid">
-          {#each hero.stats as stat}
-            <div class="stat-item">
-              <span class="stat-val">{stat.value}</span>
-              <span class="stat-lbl">{stat.label}</span>
-            </div>
-          {/each}
+        <div class="ctas">
+          {#if hero.primaryAction}
+            <button class="solid" disabled={hero.primaryAction.disabled} onclick={(e) => go(hero.primaryAction!.href, e)}>
+              {hero.primaryAction.label}<ArrowRight size={16} />
+            </button>
+          {/if}
+          {#if hero.secondaryAction}
+            <button class="link" onclick={(e) => go(hero.secondaryAction!.href, e)}>
+              {hero.secondaryAction.label}
+            </button>
+          {/if}
         </div>
+
+        {#if hero.stats && hero.stats.length > 0}
+          <dl>
+            {#each hero.stats as stat}
+              <div>
+                <dd>{stat.value}</dd>
+                <dt>{stat.label}</dt>
+              </div>
+            {/each}
+          </dl>
+        {/if}
+      </aside>
+
+      {#if heroImageSrc}
+        <figure>
+          <img src={heroImageSrc} alt={hero.heading} onerror={imageFailed} />
+        </figure>
       {/if}
     </div>
-
-    {#if heroImageSrc}
-      <div class="hero-media">
-        <div class="media-frame">
-          <img src={heroImageSrc} alt={hero.heading} class="image" onerror={handleImageError} />
-          <div class="media-edge"></div>
-        </div>
-      </div>
-    {/if}
   </div>
 </section>
 
 <style>
-  .atelier-hero {
-    padding: 5rem 2rem 5.5rem;
-    position: relative;
+  section {
+    background: #f6f3ec;
+    color: #1a1713;
+    padding: 4rem 2rem 5rem;
   }
 
-  .hero-container {
-    max-width: 1240px;
+  .wrap {
+    max-width: 80rem;
     margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
-    gap: 4.5rem;
-    align-items: center;
-  }
-
-  @media (max-width: 960px) {
-    .hero-container {
-      grid-template-columns: 1fr;
-      gap: 3.5rem;
-    }
-  }
-
-  .hero-text {
-    max-width: 640px;
-  }
-
-  .eyebrow-wrap {
-    margin-bottom: 1.5rem;
   }
 
   .eyebrow {
-    display: inline-block;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #c2410c;
-  }
-
-  .heading {
-    margin: 0 0 1.5rem;
-    font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
-    font-size: clamp(2.5rem, 5.5vw, 4.25rem);
-    font-weight: 400;
-    line-height: 1.08;
-    letter-spacing: -0.035em;
-    color: #111114;
-  }
-
-  .subheading {
-    margin: 0 0 2.5rem;
-    font-size: 1.125rem;
-    line-height: 1.7;
-    color: #52525b;
-    max-width: 540px;
-    letter-spacing: -0.01em;
-  }
-
-  .cta-row {
     display: flex;
     align-items: center;
-    gap: 1.25rem;
-    flex-wrap: wrap;
-    margin-bottom: 3.5rem;
+    gap: 1rem;
+    margin: 0 0 2rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+    color: #a3340f;
   }
 
-  .btn-primary {
-    background: #111114;
-    color: #ffffff;
-    border: none;
-    padding: 0.875rem 1.75rem;
-    border-radius: 9999px;
-    font-size: 0.9375rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
+  .eyebrow span {
+    width: 3rem;
+    height: 1px;
+    background: #a3340f;
+  }
+
+  h1 {
+    margin: 0 0 4rem;
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(3.25rem, 10vw, 9rem);
+    line-height: 0.92;
+    letter-spacing: -0.05em;
+  }
+
+  .spread {
+    display: grid;
+    grid-template-columns: 4fr 8fr;
+    gap: 4rem;
+    border-top: 1px solid #1a1713;
+    padding-top: 2.5rem;
+    align-items: start;
+  }
+
+  .spread.solo {
+    grid-template-columns: minmax(0, 40rem);
+  }
+
+  .lede {
+    margin: 0 0 2rem;
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1.4rem;
+    line-height: 1.5;
+    color: #3d372e;
+  }
+
+  .ctas {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .solid {
+    font: inherit;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 600;
+    background: #1a1713;
+    color: #f6f3ec;
+    border: 0;
+    padding: 1rem 1.6rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    transition: background 0.2s ease, gap 0.2s ease;
   }
 
-  .btn-primary:hover:not(:disabled) {
-    background: #27272a;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(17, 17, 20, 0.15);
+  .solid:hover:not(:disabled) {
+    background: #a3340f;
+    gap: 1.1rem;
   }
 
-  .btn-primary:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
+  .solid:disabled {
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .btn-secondary {
-    background: transparent;
-    color: #111114;
-    border: 1px solid rgba(17, 17, 20, 0.2);
-    padding: 0.875rem 1.75rem;
-    border-radius: 9999px;
-    font-size: 0.9375rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn-secondary:hover {
-    border-color: #111114;
-    background: rgba(17, 17, 20, 0.03);
-    transform: translateY(-1px);
-  }
-
-  .stats-grid {
-    display: flex;
-    align-items: flex-start;
-    gap: 3rem;
-    padding-top: 2rem;
-    border-top: 1px solid rgba(17, 17, 20, 0.08);
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .stat-val {
-    font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
-    font-size: 2.25rem;
-    font-weight: 500;
-    line-height: 1;
-    letter-spacing: -0.02em;
-    color: #111114;
-  }
-
-  .stat-lbl {
-    font-size: 0.75rem;
-    font-weight: 600;
+  .link {
+    font: inherit;
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #71717a;
+    letter-spacing: 0.16em;
+    font-weight: 600;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid #1a1713;
+    padding: 0 0 0.25rem;
+    color: #1a1713;
+    cursor: pointer;
   }
 
-  .hero-media {
-    display: flex;
-    justify-content: center;
+  dl {
+    margin: 3rem 0 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(26, 23, 19, 0.2);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+    gap: 1.5rem;
   }
 
-  .media-frame {
-    position: relative;
-    width: 100%;
-    max-width: 480px;
-    border-radius: 12px;
-    background: #ffffff;
-    border: 1px solid rgba(17, 17, 20, 0.08);
-    box-shadow: 0 24px 48px -12px rgba(17, 17, 20, 0.09);
-    overflow: hidden;
+  dd {
+    margin: 0;
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2.75rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
   }
 
-  .media-edge {
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    pointer-events: none;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  dt {
+    margin-top: 0.4rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #6b6355;
   }
 
-  .image {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 4 / 5;
-    object-fit: cover;
+  figure {
+    margin: 0;
+  }
+
+  img {
     display: block;
-    transition: transform 0.4s ease;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    filter: saturate(0.9) contrast(1.02);
   }
 
-  .media-frame:hover .image {
-    transform: scale(1.02);
-  }
-
-  @media (max-width: 640px) {
-    .atelier-hero {
-      padding: 3rem 1.25rem 4rem;
+  @media (max-width: 860px) {
+    .spread {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
     }
 
-    .stats-grid {
-      gap: 2rem;
-      flex-wrap: wrap;
+    h1 {
+      margin-bottom: 2.5rem;
     }
   }
 </style>

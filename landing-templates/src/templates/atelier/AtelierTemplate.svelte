@@ -50,8 +50,8 @@
 
 <style>
   .atelier-theme {
-    background-color: #f8f8f9;
-    color: #111114;
+    background-color: #f6f3ec;
+    color: #1a1713;
     min-height: 100vh;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;

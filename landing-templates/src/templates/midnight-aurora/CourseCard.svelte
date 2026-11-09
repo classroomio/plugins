@@ -1,252 +1,295 @@
 <script lang="ts">
   import type { PublicLandingCourse, PublicLandingLabels } from '../../shared/types';
   import { requestNavigation } from '../../shared/bridge';
-  import BookOpen from '@lucide/svelte/icons/book-open';
-  import Users from '@lucide/svelte/icons/users';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
 
   let {
     course,
-    labels
+    labels,
+    variant = 'row',
+    index = 0
   }: {
     course: PublicLandingCourse;
     labels: PublicLandingLabels;
+    variant?: 'feature' | 'row';
+    index?: number;
   } = $props();
 
-  function handleClick(e: MouseEvent) {
+  function open(e: MouseEvent) {
     e.preventDefault();
     requestNavigation(course.href);
   }
 
-  const formattedPrice = $derived.by(() => {
-    if (course.isFree || course.price === 0) {
-      return labels.courseFree || 'Free';
-    }
-    if (typeof course.price === 'number') {
-      const currency = course.currency ?? '$';
-      return `${currency}${course.price}`;
-    }
-    return labels.courseFree || 'Free';
+  const price = $derived.by(() => {
+    if (course.isFree || course.price === 0) return labels.courseFree;
+    if (typeof course.price === 'number') return `${course.currency ?? '$'}${course.price}`;
+    return labels.courseFree;
   });
+
+  const number = $derived(String(index + 1).padStart(2, '0'));
 </script>
 
-<div class="obsidian-card">
-  <div class="banner-wrap">
-    {#if course.image}
-      <img src={course.image} alt={course.title} class="banner-img" />
-    {:else}
-      <div class="banner-placeholder">
-        <span class="placeholder-glow">✦</span>
-      </div>
-    {/if}
-
-    <div class="price-pill">
-      <span>{formattedPrice}</span>
+{#if variant === 'feature'}
+  <a class="feature" href={course.href} onclick={open}>
+    <div class="media">
+      {#if course.image}
+        <img src={course.image} alt={course.title} />
+      {:else}
+        <div class="placeholder"></div>
+      {/if}
+      <span class="badge">{price}</span>
     </div>
-  </div>
-
-  <div class="card-body">
-    {#if course.tags && course.tags.length > 0}
-      <div class="tags-row">
-        {#each course.tags.slice(0, 3) as tag}
-          <span class="tag">{tag}</span>
-        {/each}
+    <div class="body">
+      <span class="mono">{number}</span>
+      {#if course.tags && course.tags.length > 0}
+        <div class="tags">
+          {#each course.tags.slice(0, 3) as tag}<span>{tag}</span>{/each}
+        </div>
+      {/if}
+      <h3>{course.title}</h3>
+      {#if course.description}<p>{course.description}</p>{/if}
+      <div class="foot">
+        <span class="meta">
+          {#if typeof course.lessonsCount === 'number'}{course.lessonsCount} {labels.courseLessons}{/if}
+          {#if typeof course.lessonsCount === 'number' && typeof course.studentsCount === 'number'} · {/if}
+          {#if typeof course.studentsCount === 'number'}{course.studentsCount} {labels.courseStudents}{/if}
+        </span>
+        <span class="cta">{labels.courseEnroll}<ArrowUpRight size={16} /></span>
       </div>
-    {/if}
-
-    <h3 class="title">{course.title}</h3>
-    {#if course.description}
-      <p class="description">{course.description}</p>
-    {/if}
-
-    {#if typeof course.lessonsCount === 'number' || typeof course.studentsCount === 'number'}
-      <div class="meta-row">
-        {#if typeof course.lessonsCount === 'number'}
-          <div class="meta-item">
-            <BookOpen size={13} />
-            <span>{course.lessonsCount} {labels.courseLessons || 'lessons'}</span>
-          </div>
-        {/if}
-
-        {#if typeof course.studentsCount === 'number'}
-          <div class="meta-item">
-            <Users size={13} />
-            <span>{course.studentsCount} {labels.courseStudents || 'students'}</span>
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    <div class="action-wrap">
-      <button type="button" class="btn-enroll" onclick={handleClick}>
-        <span>{labels.courseEnroll || 'Enroll Now'}</span>
-        <ArrowUpRight size={14} />
-      </button>
     </div>
-  </div>
-</div>
+  </a>
+{:else}
+  <a class="row" href={course.href} onclick={open}>
+    <span class="mono">{number}</span>
+    <div class="thumb">
+      {#if course.image}<img src={course.image} alt={course.title} />{:else}<div class="placeholder"></div>{/if}
+    </div>
+    <div class="text">
+      <h4>{course.title}</h4>
+      {#if course.description}<p>{course.description}</p>{/if}
+    </div>
+    <span class="meta">
+      {#if typeof course.lessonsCount === 'number'}{course.lessonsCount} {labels.courseLessons}{/if}
+    </span>
+    <span class="price">{price}</span>
+    <span class="arrow"><ArrowUpRight size={18} /></span>
+  </a>
+{/if}
 
 <style>
-  .obsidian-card {
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  a {
+    color: inherit;
+    text-decoration: none;
   }
 
-  .obsidian-card:hover {
-    border-color: rgba(99, 102, 241, 0.45);
-    transform: translateY(-3px);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.15);
+  .mono {
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 0.8rem;
+    color: #6366f1;
+    letter-spacing: 0.1em;
   }
 
-  .banner-wrap {
-    position: relative;
+  .placeholder {
     width: 100%;
-    aspect-ratio: 16 / 9;
-    background: #0f1118;
-    overflow: hidden;
+    height: 100%;
+    background: radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.5), transparent 60%), #0e1018;
   }
 
-  .banner-img {
+  .feature {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+    transition: border-color 0.3s ease, transform 0.3s ease;
+  }
+
+  .feature:hover {
+    border-color: rgba(129, 140, 248, 0.5);
+    transform: translateY(-3px);
+  }
+
+  .media {
+    position: relative;
+    min-height: 22rem;
+  }
+
+  .media img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
-    opacity: 0.92;
-    transition: transform 0.35s ease;
   }
 
-  .obsidian-card:hover .banner-img {
-    transform: scale(1.03);
-  }
-
-  .banner-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #141622 0%, #0c0d14 100%);
-    color: #818cf8;
-    font-size: 2rem;
-  }
-
-  .placeholder-glow {
-    filter: drop-shadow(0 0 8px #818cf8);
-  }
-
-  .price-pill {
+  .badge {
     position: absolute;
-    bottom: 0.65rem;
-    right: 0.65rem;
-    background: rgba(8, 9, 13, 0.88);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(99, 102, 241, 0.35);
-    border-radius: 9999px;
-    padding: 0.2rem 0.65rem;
-    font-family: 'Geist Mono', monospace;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #a5b4fc;
+    top: 1.25rem;
+    left: 1.25rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(5, 6, 10, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
   }
 
-  .card-body {
-    padding: 1.25rem;
+  .body {
+    padding: 2.5rem;
     display: flex;
     flex-direction: column;
-    flex: 1;
+    gap: 1rem;
   }
 
-  .tags-row {
+  .tags {
     display: flex;
+    gap: 0.4rem;
     flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-bottom: 0.65rem;
   }
 
-  .tag {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 4px;
-    padding: 0.125rem 0.45rem;
-    color: #94a3b8;
+  .tags span {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.12);
   }
 
-  .title {
-    margin: 0 0 0.5rem;
-    font-size: 1.0625rem;
-    font-weight: 700;
-    line-height: 1.35;
-    color: #ffffff;
-    letter-spacing: -0.015em;
+  h3 {
+    margin: 0;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.035em;
+    color: #fff;
   }
 
-  .description {
-    margin: 0 0 1rem;
-    font-size: 0.84375rem;
-    line-height: 1.5;
-    color: #94a3b8;
+  .body p {
+    margin: 0;
+    color: #9ca3b4;
+    line-height: 1.65;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    flex: 1;
   }
 
-  .meta-row {
-    display: flex;
-    align-items: center;
-    gap: 0.875rem;
-    padding: 0.65rem 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    margin-bottom: 0.75rem;
-  }
-
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-family: 'Geist Mono', monospace;
-    font-size: 0.71875rem;
-    color: #64748b;
-  }
-
-  .action-wrap {
+  .foot {
     margin-top: auto;
-  }
-
-  .btn-enroll {
-    width: 100%;
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #f8fafc;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    cursor: pointer;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    transition: all 0.2s ease;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .btn-enroll:hover {
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.18), rgba(99, 102, 241, 0.22));
-    border-color: rgba(99, 102, 241, 0.5);
-    color: #ffffff;
+  .meta {
+    font-size: 0.85rem;
+    color: #6b7280;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+    color: #e0e7ff;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 2.5rem 5.5rem 1fr auto auto 2rem;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid transparent;
+    transition: background 0.25s ease, border-color 0.25s ease;
+  }
+
+  .row:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.09);
+  }
+
+  .thumb {
+    width: 5.5rem;
+    height: 3.75rem;
+    border-radius: 0.6rem;
+    overflow: hidden;
+  }
+
+  .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .text h4 {
+    margin: 0 0 0.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f3f4f6;
+    letter-spacing: -0.02em;
+  }
+
+  .text p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #7b8394;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .price {
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 0.9rem;
+    color: #e5e7eb;
+    min-width: 4rem;
+    text-align: right;
+  }
+
+  .arrow {
+    color: #6b7280;
+    transition: transform 0.25s ease, color 0.25s ease;
+  }
+
+  .row:hover .arrow {
+    color: #a5b4fc;
+    transform: translate(3px, -3px);
+  }
+
+  @media (max-width: 860px) {
+    .feature {
+      grid-template-columns: 1fr;
+    }
+
+    .media {
+      min-height: 15rem;
+    }
+
+    .body {
+      padding: 1.5rem;
+    }
+
+    .row {
+      grid-template-columns: 4.5rem 1fr auto;
+    }
+
+    .row .mono,
+    .row .meta,
+    .row .arrow {
+      display: none;
+    }
+
+    .thumb {
+      width: 4.5rem;
+    }
   }
 </style>

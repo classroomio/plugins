@@ -40,15 +40,15 @@
 <style>
   .atelier-callout {
     padding: 6rem 2rem;
-    background: #f8f8f9;
+    background: #f6f3ec;
   }
 
   .callout-card {
     max-width: 980px;
     margin: 0 auto;
     background: #ffffff;
-    border: 1px solid rgba(17, 17, 20, 0.08);
-    border-radius: 16px;
+    border: 1px solid rgba(26, 23, 19, 0.08);
+    border-radius: 0;
     padding: 4.5rem 2.5rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   }
@@ -66,7 +66,7 @@
     font-weight: 400;
     line-height: 1.15;
     letter-spacing: -0.03em;
-    color: #111114;
+    color: #1a1713;
   }
 
   .description {
@@ -83,11 +83,11 @@
   }
 
   .btn-cta {
-    background: #111114;
+    background: #1a1713;
     color: #ffffff;
     border: none;
     padding: 0.875rem 2rem;
-    border-radius: 9999px;
+    border-radius: 0;
     font-size: 0.9375rem;
     font-weight: 500;
     letter-spacing: -0.01em;
@@ -100,9 +100,9 @@
   }
 
   .btn-cta:hover {
-    background: #27272a;
+    background: #a3340f;
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(17, 17, 20, 0.15);
+    box-shadow: 0 8px 24px rgba(26, 23, 19, 0.15);
   }
 
   @media (max-width: 640px) {

@@ -49,8 +49,8 @@
 <style>
   .atelier-embed {
     padding: 5.5rem 2rem;
-    border-top: 1px solid rgba(17, 17, 20, 0.08);
-    background: #f8f8f9;
+    border-top: 1px solid rgba(26, 23, 19, 0.08);
+    background: #f6f3ec;
   }
 
   .embed-container {
@@ -69,7 +69,7 @@
     font-size: clamp(2rem, 3.5vw, 2.75rem);
     font-weight: 400;
     letter-spacing: -0.03em;
-    color: #111114;
+    color: #1a1713;
   }
 
   .description {
@@ -81,13 +81,13 @@
   }
 
   .frame-box {
-    border: 1px solid rgba(17, 17, 20, 0.1);
-    border-radius: 12px;
+    border: 1px solid rgba(26, 23, 19, 0.1);
+    border-radius: 0;
     background: #000000;
     overflow: hidden;
     position: relative;
     aspect-ratio: 16 / 9;
-    box-shadow: 0 20px 48px -12px rgba(17, 17, 20, 0.12);
+    box-shadow: 0 20px 48px -12px rgba(26, 23, 19, 0.12);
   }
 
   .embed-iframe {
@@ -104,10 +104,10 @@
 
   .btn-action {
     background: transparent;
-    color: #111114;
-    border: 1px solid rgba(17, 17, 20, 0.2);
+    color: #1a1713;
+    border: 1px solid rgba(26, 23, 19, 0.2);
     padding: 0.625rem 1.25rem;
-    border-radius: 9999px;
+    border-radius: 0;
     font-size: 0.875rem;
     font-weight: 500;
     display: inline-flex;
@@ -118,8 +118,8 @@
   }
 
   .btn-action:hover {
-    border-color: #111114;
-    background: rgba(17, 17, 20, 0.03);
+    border-color: #1a1713;
+    background: rgba(26, 23, 19, 0.03);
   }
 
   @media (max-width: 640px) {

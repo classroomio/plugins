@@ -16,47 +16,37 @@
     labels: PublicLandingLabels;
   } = $props();
 
-  function handleViewAll(e: MouseEvent) {
+  function viewAll(e: MouseEvent) {
     e.preventDefault();
     requestNavigation('/courses');
   }
 </script>
 
-<section class="vanguard-courses">
-  <div class="courses-container">
-    <div class="header-row">
-      <div class="title-col">
-        <div class="section-badge">Curriculum</div>
-        <h2 class="section-heading">{labels.coursesHeading || 'Featured Courses'}</h2>
-        {#if labels.coursesSubheading}
-          <p class="section-subheading">{labels.coursesSubheading}</p>
-        {/if}
+<section>
+  <div class="wrap">
+    <header>
+      <div>
+        <h2>{labels.coursesHeading}</h2>
+        {#if labels.coursesSubheading}<p>{labels.coursesSubheading}</p>{/if}
       </div>
-
       {#if hasMoreCourses}
-        <button class="btn-all" onclick={handleViewAll}>
-          <span>{labels.coursesViewAll || 'Explore All Courses'}</span>
-          <ArrowRight size={14} />
-        </button>
+        <button onclick={viewAll}>{labels.coursesViewAll}<ArrowRight size={16} /></button>
       {/if}
-    </div>
+    </header>
 
     {#if !coursesLoaded}
-      <div class="loading-state">
-        <div class="spinner"></div>
-      </div>
+      <div class="state"><div class="spinner"></div></div>
     {:else if courses.length === 0}
-      <div class="empty-state">
-        <div class="empty-box">
-          <span class="empty-icon">✦</span>
-          <h3 class="empty-title">{labels.coursesEmptyTitle || 'No courses published yet'}</h3>
-          <p class="empty-desc">{labels.coursesEmptyDescription || 'Check back soon for upcoming courses.'}</p>
-        </div>
+      <div class="state empty">
+        <h3>{labels.coursesEmptyTitle}</h3>
+        <p>{labels.coursesEmptyDescription}</p>
       </div>
     {:else}
-      <div class="grid">
-        {#each courses as course (course.id)}
-          <CourseCard {course} {labels} />
+      <div class="bento">
+        {#each courses as course, i (course.id)}
+          <div class="cell" class:hero={i === 0 && courses.length > 2}>
+            <CourseCard {course} {labels} featured={i === 0 && courses.length > 2} tone={i} />
+          </div>
         {/each}
       </div>
     {/if}
@@ -64,96 +54,100 @@
 </section>
 
 <style>
-  .vanguard-courses {
-    padding: 5.5rem 2rem;
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
+  section {
+    position: relative;
+    margin-top: -3rem;
+    padding: 0 1.5rem 6rem;
+    border-radius: 2.5rem 2.5rem 0 0;
+    background: #f3f4fb;
+    padding-top: 5rem;
   }
 
-  .courses-container {
-    max-width: 1240px;
+  .wrap {
+    max-width: 76rem;
     margin: 0 auto;
   }
 
-  .header-row {
+  header {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 3rem;
     gap: 1.5rem;
     flex-wrap: wrap;
+    margin-bottom: 2.5rem;
   }
 
-  .title-col {
-    max-width: 600px;
-  }
-
-  .section-badge {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #4f46e5;
-    margin-bottom: 0.5rem;
-  }
-
-  .section-heading {
+  h2 {
     margin: 0 0 0.5rem;
-    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-size: clamp(2rem, 4vw, 3.25rem);
     font-weight: 800;
-    line-height: 1.2;
-    letter-spacing: -0.03em;
-    color: #0f172a;
+    letter-spacing: -0.045em;
+    color: #0b1020;
   }
 
-  .section-subheading {
+  header p {
     margin: 0;
-    font-size: 1.0625rem;
-    line-height: 1.6;
-    color: #64748b;
+    color: #5b6483;
+    max-width: 34rem;
   }
 
-  .btn-all {
-    background: #ffffff;
-    color: #0f172a;
-    border: 1px solid #e2e8f0;
-    padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
+  button {
+    font: inherit;
+    font-weight: 700;
+    padding: 0.75rem 1.3rem;
+    border-radius: 0.85rem;
+    border: 0;
+    color: #fff;
+    background: #0b1020;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
 
-  .btn-all:hover {
-    border-color: #cbd5e1;
-    background: #f1f5f9;
-    transform: translateY(-1px);
+  button:hover {
+    background: #4f46e5;
   }
 
-  .grid {
+  .bento {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1.25rem;
   }
 
-  .loading-state {
-    padding: 5rem 0;
+  .cell.hero {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+
+  .state {
     display: flex;
     justify-content: center;
+    padding: 4rem 0;
+  }
+
+  .empty {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .empty h3 {
+    margin: 0 0 0.4rem;
+    color: #0b1020;
+  }
+
+  .empty p {
+    margin: 0;
+    color: #5b6483;
   }
 
   .spinner {
     width: 2rem;
     height: 2rem;
-    border: 2px solid #e2e8f0;
-    border-top-color: #4f46e5;
     border-radius: 50%;
+    border: 2px solid #dfe2f3;
+    border-top-color: #4f46e5;
     animation: spin 0.8s linear infinite;
   }
 
@@ -163,51 +157,10 @@
     }
   }
 
-  .empty-state {
-    padding: 4rem 1rem;
-    display: flex;
-    justify-content: center;
-  }
-
-  .empty-box {
-    text-align: center;
-    max-width: 440px;
-    background: #ffffff;
-    padding: 3rem 2rem;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-  }
-
-  .empty-icon {
-    font-size: 2rem;
-    color: #6366f1;
-    display: block;
-    margin-bottom: 0.75rem;
-  }
-
-  .empty-title {
-    margin: 0 0 0.5rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #0f172a;
-    letter-spacing: -0.02em;
-  }
-
-  .empty-desc {
-    margin: 0;
-    font-size: 0.9375rem;
-    color: #64748b;
-    line-height: 1.6;
-  }
-
   @media (max-width: 640px) {
-    .vanguard-courses {
-      padding: 3.5rem 1.25rem;
-    }
-
-    .grid {
-      grid-template-columns: 1fr;
+    .cell.hero {
+      grid-column: span 1;
+      grid-row: span 1;
     }
   }
 </style>

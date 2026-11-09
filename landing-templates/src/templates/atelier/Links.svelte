@@ -48,8 +48,8 @@
 <style>
   .atelier-links {
     padding: 5.5rem 2rem;
-    border-top: 1px solid rgba(17, 17, 20, 0.08);
-    background: #f8f8f9;
+    border-top: 1px solid rgba(26, 23, 19, 0.08);
+    background: #f6f3ec;
   }
 
   .links-container {
@@ -67,7 +67,7 @@
     font-size: clamp(2rem, 3.5vw, 2.75rem);
     font-weight: 400;
     letter-spacing: -0.03em;
-    color: #111114;
+    color: #1a1713;
   }
 
   .description {
@@ -83,8 +83,8 @@
   }
 
   .link-card {
-    border: 1px solid rgba(17, 17, 20, 0.08);
-    border-radius: 10px;
+    border: 1px solid rgba(26, 23, 19, 0.08);
+    border-radius: 0;
     background: #ffffff;
     padding: 2rem;
     display: flex;
@@ -95,9 +95,9 @@
   }
 
   .link-card:hover {
-    border-color: rgba(17, 17, 20, 0.2);
+    border-color: rgba(26, 23, 19, 0.2);
     transform: translateY(-2px);
-    box-shadow: 0 12px 28px -6px rgba(17, 17, 20, 0.08);
+    box-shadow: 0 12px 28px -6px rgba(26, 23, 19, 0.08);
   }
 
   .index-num {
@@ -113,7 +113,7 @@
     font-size: 1.125rem;
     font-weight: 600;
     letter-spacing: -0.02em;
-    color: #111114;
+    color: #1a1713;
   }
 
   .card-desc {
@@ -127,7 +127,7 @@
     margin-top: 1.5rem;
     align-self: flex-start;
     background: transparent;
-    color: #111114;
+    color: #1a1713;
     border: none;
     padding: 0;
     font-size: 0.875rem;
@@ -140,7 +140,7 @@
   }
 
   .btn-card-read:hover {
-    color: #c2410c;
+    color: #a3340f;
     gap: 0.5rem;
   }
 

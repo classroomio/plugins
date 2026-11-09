@@ -109,7 +109,7 @@
 
 <style>
   .atelier-footer {
-    border-top: 1px solid rgba(17, 17, 20, 0.08);
+    border-top: 1px solid rgba(26, 23, 19, 0.08);
     background: #ffffff;
     padding: 5rem 2rem 3rem;
   }
@@ -124,7 +124,7 @@
     justify-content: space-between;
     gap: 4rem;
     padding-bottom: 3.5rem;
-    border-bottom: 1px solid rgba(17, 17, 20, 0.06);
+    border-bottom: 1px solid rgba(26, 23, 19, 0.06);
     flex-wrap: wrap;
   }
 
@@ -151,7 +151,7 @@
     font-size: 1.35rem;
     font-weight: 500;
     letter-spacing: -0.02em;
-    color: #111114;
+    color: #1a1713;
   }
 
   .tagline {
@@ -173,15 +173,15 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    border-radius: 9999px;
-    background: #f4f4f5;
+    border-radius: 0;
+    background: #ece7da;
     color: #52525b;
     text-decoration: none;
     transition: all 0.2s ease;
   }
 
   .social-icon-btn:hover {
-    background: #111114;
+    background: #1a1713;
     color: #ffffff;
     transform: translateY(-1px);
   }
@@ -198,7 +198,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #111114;
+    color: #1a1713;
   }
 
   .col-list {
@@ -218,7 +218,7 @@
   }
 
   .col-link:hover {
-    color: #111114;
+    color: #1a1713;
   }
 
   .bottom-bar {
@@ -256,7 +256,7 @@
   }
 
   .bottom-link:hover {
-    color: #111114;
+    color: #1a1713;
   }
 
   @media (max-width: 768px) {
